@@ -1,6 +1,6 @@
 - src: https://github.com/keroro520/ansible-ckb
   scm: git
   version: main
-- src: https://github.com/keroro520/ansible-ckb-benchmark
+- src: https://github.com/gpBlockchain/ansible-ckb-benchmark.git
   scm: git
   version: main
