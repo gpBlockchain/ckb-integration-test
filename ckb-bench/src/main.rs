@@ -322,11 +322,6 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             }
 
             let zero_load_number = watcher.get_fixed_header().number();
-            let mut i = 0;
-            let start_time = Instant::now();
-            let mut last_log_time = Instant::now();
-            let mut benched_transactions = 0u64;
-            let mut duplicated_transactions = 0u64;
             let rt = Runtime::new().unwrap();
             let tx_consumer = TransactionConsumer::new(nodes.clone());
             rt.block_on(

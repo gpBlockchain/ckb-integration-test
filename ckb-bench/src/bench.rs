@@ -62,7 +62,6 @@ impl LiveCellProducer {
                 .min()
                 .unwrap();
             for user in self.users.iter() {
-                let mut begin = Instant::now();
                 let live_cells = user
                     .get_spendable_single_secp256k1_cells(&self.nodes[0])
                     .into_iter()
@@ -81,7 +80,6 @@ impl LiveCellProducer {
                         true
                     })
                     .collect::<Vec<_>>();
-                // ckb_testkit::info!("live_cells gen delay:{:?}",Instant::now() - begin);
                 for cell in live_cells {
                     self.seen_out_points
                         .put(cell.out_point.clone(), Instant::now());
@@ -184,7 +182,7 @@ impl TransactionProducer {
         while let Ok(live_cell) = live_cell_receiver.recv() {
             let lock_hash = live_cell.cell_output.calc_lock_hash();
 
-            if let Some(live_cell_in_map) = self.live_cells.get(&lock_hash) {
+            if let Some(_live_cell_in_map) = self.live_cells.get(&lock_hash) {
                 // 如果 live_cells 中已存在相同 lock_hash 的 live_cell，将新 live_cell 添加到 backlogs
                 self.backlogs
                     .entry(lock_hash.clone())
@@ -354,7 +352,7 @@ impl TransactionConsumer {
                 let mut use_time = Duration::from_millis(0);
 
                 match result {
-                    Some(Ok((Ok(is_accepted), tx_hash, cost_time))) => {
+                    Some(Ok((Ok(is_accepted), _tx_hash, cost_time))) => {
                         use_time = cost_time;
                         if is_accepted {
                             benched_transactions += 1;
