@@ -8,17 +8,14 @@ mod watcher;
 mod tests;
 
 use tokio::runtime::Runtime;
-use ckb_testkit::ckb_types::core::{TransactionView};
-use tokio::time::sleep as async_sleep;
 use crate::bench::{LiveCellProducer, TransactionConsumer, TransactionProducer};
 use crate::prepare::{collect, derive_privkeys, dispatch};
-use crate::utils::maybe_retry_send_transaction_async;
 use crate::watcher::Watcher;
 use ckb_testkit::ckb_crypto::secp::Privkey;
 use ckb_testkit::ckb_types::{core::BlockNumber, packed::Byte32, prelude::*, H256};
 use ckb_testkit::{Node, Nodes, User};
 use clap::{value_t_or_exit, values_t_or_exit, App, Arg, ArgMatches, SubCommand};
-use crossbeam_channel::{bounded, Receiver};
+use crossbeam_channel::{bounded};
 use std::env;
 use std::ops::Div;
 use std::path::PathBuf;
@@ -28,14 +25,6 @@ use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
 use url::Url;
 
-use std::sync::Arc;
-use tokio::sync::Semaphore;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use tokio::time::{interval, Duration as DurationAsync};
-
-use futures::stream::FuturesUnordered;
-use futures::{FutureExt, StreamExt};
-use tokio::count;
 
 #[macro_export]
 macro_rules! prompt_and_exit {

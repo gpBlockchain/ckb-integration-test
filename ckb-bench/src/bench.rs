@@ -5,13 +5,12 @@ use ckb_testkit::ckb_types::{
     packed::{Byte32, CellInput, OutPoint},
     prelude::*,
 };
-use rayon::prelude::*;
 use ckb_testkit::util::since_from_absolute_epoch_number_with_fraction;
 use ckb_testkit::{Node, User};
 use crossbeam_channel::{Receiver, Sender};
 use lru::LruCache;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
 use std::time::{Duration, Instant};
 use tokio::sync::Semaphore;
 use futures::stream::FuturesUnordered;
@@ -19,7 +18,6 @@ use futures::{FutureExt, StreamExt};
 use tokio::time::sleep as async_sleep;
 use crate::utils::maybe_retry_send_transaction_async;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use serde::de::Expected;
 
 pub struct LiveCellProducer {
     users: Vec<User>,
@@ -307,7 +305,7 @@ impl TransactionConsumer {
     }
 
     pub async fn run(
-        mut self,
+        self,
         transaction_receiver: Receiver<TransactionView>,
                      max_concurrent_requests: usize,
                      t_tx_interval: Duration,
