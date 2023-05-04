@@ -10,7 +10,7 @@ mod tests;
 use tokio::runtime::Runtime;
 use ckb_testkit::ckb_types::core::{TransactionView};
 use tokio::time::sleep as async_sleep;
-use crate::bench::{LiveCellProducer, TransactionProducer};
+use crate::bench::{LiveCellProducer, TransactionConsumer, TransactionProducer};
 use crate::prepare::{collect, derive_privkeys, dispatch};
 use crate::utils::maybe_retry_send_transaction_async;
 use crate::watcher::Watcher;
@@ -148,7 +148,6 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let n_users = value_t_or_exit!(arguments, "n-users", usize);
             let cells_per_user = value_t_or_exit!(arguments, "cells-per-user", u64);
             let capacity_per_cell = value_t_or_exit!(arguments, "capacity-per-cell", u64);
-            let count = value_t_or_exit!(arguments, "loop-times", u64);
             let owner_raw_privkey = env::var("CKB_BENCH_OWNER_PRIVKEY").unwrap_or_else(|err| {
                 prompt_and_exit!(
                     "cannot find \"CKB_BENCH_OWNER_PRIVKEY\" from environment variables, error: {}",
@@ -182,7 +181,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             };
             wait_for_nodes_sync(&nodes);
             wait_for_indexer_synced(&nodes);
-            dispatch(&nodes, &owner, &users, cells_per_user, capacity_per_cell, count);
+            dispatch(&nodes, &owner, &users, cells_per_user, capacity_per_cell);
         }
         ("collect", Some(arguments)) => {
             let data_dir = value_t_or_exit!(arguments, "data-dir", PathBuf);
@@ -340,8 +339,9 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let mut benched_transactions = 0u64;
             let mut duplicated_transactions = 0u64;
             let rt = Runtime::new().unwrap();
+            let tx_consumer = TransactionConsumer::new(nodes.clone());
             rt.block_on(
-                process_transactions(transaction_receiver, &nodes, bench_concurrent_requests_number, t_tx_interval, t_bench)
+                tx_consumer.run(transaction_receiver, bench_concurrent_requests_number, t_tx_interval, t_bench)
             );
             if !is_smoking_test {
                 while !watcher.is_zero_load() {
@@ -393,118 +393,6 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
         _ => {
             eprintln!("wrong usage");
             exit(1);
-        }
-    }
-}
-
-async fn process_transactions(
-    transaction_receiver: Receiver<TransactionView>,
-    nodes: &Vec<Node>,
-    max_concurrent_requests: usize,
-    t_tx_interval: Duration,
-    t_bench: Duration,
-)
-{
-    let start_time = Instant::now();
-    let mut last_log_time = Instant::now();
-    let mut benched_transactions = 0;
-    let mut duplicated_transactions = 0;
-    let mut loop_count = 0;
-    let mut i = 0;
-    let log_duration_time = 3;
-
-    let semaphore = Arc::new(Semaphore::new(max_concurrent_requests));
-    let transactions_processed = Arc::new(AtomicUsize::new(0));
-    let transactions_total_time = Arc::new(AtomicUsize::new(0));
-
-
-    // let logger_task = print_transactions_processed(transactions_processed.clone(), transactions_total_time.clone());
-    // tokio::spawn(logger_task);
-    let mut pending_tasks = FuturesUnordered::new();
-
-    loop {
-        loop_count += 1;
-        let tx = transaction_receiver
-            .recv_timeout(Duration::from_secs(60 * 3))
-            .expect("timeout to wait transaction_receiver");
-        if t_tx_interval.as_millis() != 0 {
-            async_sleep(t_tx_interval).await;
-        }
-
-        i = (i + 1) % nodes.len();
-        let node = nodes[i].clone();
-        let permit = semaphore.clone().acquire_owned().await;
-        let tx_hash = tx.hash();
-        let begin_time = Instant::now();
-        let task = async move {
-            let result = maybe_retry_send_transaction_async(&node, &tx).await;
-            drop(permit);
-            (result, tx_hash, Instant::now() - begin_time)
-        };
-
-        pending_tasks.push(tokio::spawn(task));
-        while let Some(result) = pending_tasks.next().now_or_never() {
-            transactions_processed.fetch_add(1, Ordering::Relaxed);
-
-            let mut use_time = Duration::from_millis(0);
-
-            match result {
-                Some(Ok((Ok(is_accepted), tx_hash, cost_time))) => {
-                    use_time = cost_time;
-                    if is_accepted {
-                        benched_transactions += 1;
-                    } else {
-                        duplicated_transactions += 1;
-                    }
-                }
-                Some(Ok((Err(err), tx_hash, cost_time))) => {
-                    use_time = cost_time;
-                    // double spending, discard this transaction
-                    ckb_testkit::info!(
-                    "consumer count :{} failed to send tx {:#x}, error: {}",
-                    loop_count,
-                    tx_hash,
-                    err
-                );
-                    if !err.contains("TransactionFailedToResolve") {
-                        ckb_testkit::error!(
-                        "failed to send tx {:#x}, error: {}",
-                        tx_hash,
-                        err
-                    );
-                    }
-                }
-                Some(Err(e)) => {
-                    eprintln!("Error in task: {:?}", e);
-                }
-                None => break,
-            }
-            transactions_total_time.fetch_add(use_time.as_millis() as usize, Ordering::Relaxed);
-        }
-
-        if last_log_time.elapsed() > Duration::from_secs(log_duration_time) {
-            last_log_time = Instant::now();
-            let duration_count = transactions_processed.swap(0, Ordering::Relaxed);
-            let duration_total_time = transactions_total_time.swap(0, Ordering::Relaxed);
-            let mut duration_tps = 0;
-            let mut duration_delay = 0;
-            if duration_count != 0 {
-                duration_delay = duration_total_time / (duration_count as usize);
-                duration_tps = duration_count / (log_duration_time as usize);
-            }
-            ckb_testkit::info!(
-                "[TransactionConsumer] consumer :{} transactions, {} duplicated {} , transaction producer  remaining :{}, log duration {} s,duration send tx tps {},duration avg delay {}ms",
-                loop_count,
-                benched_transactions,
-                duplicated_transactions,
-                transaction_receiver.len(),
-                log_duration_time,
-                duration_tps,
-                duration_delay
-            );
-        }
-        if start_time.elapsed() > t_bench {
-            break;
         }
     }
 }
@@ -674,15 +562,6 @@ fn clap_app() -> App<'static, 'static> {
                         .default_value("./data")
                         .help("Data directory"),
                 )
-                .arg(
-                    Arg::with_name("loop-times")
-                        .long("loop-times")
-                        .required(false)
-                        .default_value("1")
-                        .takes_value(true)
-                        .value_name("NUMBER")
-                        .help("gen cell size"),
-                ),
         )
         .subcommand(
             SubCommand::with_name("collect")

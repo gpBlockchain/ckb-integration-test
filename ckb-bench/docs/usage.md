@@ -33,13 +33,11 @@ Assuming `CKB_BENCH_OWNER_PRIVKEY` has so much CKB capacity, the following code 
     --n-users 9000 \
     --cells-per-user 1 \
     --capacity-per-cell 7100000000
-    --loop-times 100
 ```
 
 - `--n-users 9000`: Generate `9000` derived users
 - `--cells-per-user 1`: Dispatch `1` unspent cell to every derived user.
 - `--capacity-per-cell 7100000000`: Gives each cell `7100000000` capacity.
-- `--loop-times 10`:loop run 10 times
 
 ### Construct and Send Transactions Continuously
 

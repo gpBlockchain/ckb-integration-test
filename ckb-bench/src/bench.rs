@@ -32,11 +32,12 @@ impl LiveCellProducer {
         let n_users = users.len();
 
         let mut max_count = 1;
-        for i in (0..=users.len()-1).step_by(users.len()/20) {
+        for i in (0..=users.len()-1).step_by(20) {
             let cell_count = users.get(i).expect("out of bound").get_spendable_single_secp256k1_cells(&nodes[0]).len();
-            if cell_count > max_count {
+            if cell_count > max_count && cell_count <= 10000 {
                 max_count = cell_count;
             }
+            ckb_testkit::debug!("idx:{}:cell_size:{}",i,cell_count)
         }
         ckb_testkit::debug!(" lru cache every user max count:{}",max_count);
         Self {
@@ -295,25 +296,19 @@ impl TransactionProducer {
 
 pub struct TransactionConsumer {
     nodes: Vec<Node>,
-    max_concurrent_requests: usize,
-    t_tx_interval: Duration,
-    t_bench: Duration,
-
 }
 
 
 impl TransactionConsumer {
-    pub fn new(nodes: Vec<Node>, max_concurrent_requests: usize, t_tx_interval: Duration, t_bench: Duration) -> Self {
+    pub fn new(nodes: Vec<Node>) -> Self {
         Self {
-            nodes,
-            max_concurrent_requests,
-            t_tx_interval,
-            t_bench,
+            nodes
         }
     }
 
-    pub async fn run(transaction_receiver: Receiver<TransactionView>,
-                     nodes: &Vec<Node>,
+    pub async fn run(
+        mut self,
+        transaction_receiver: Receiver<TransactionView>,
                      max_concurrent_requests: usize,
                      t_tx_interval: Duration,
                      t_bench: Duration) {
@@ -343,8 +338,8 @@ impl TransactionConsumer {
                 async_sleep(t_tx_interval).await;
             }
 
-            i = (i + 1) % nodes.len();
-            let node = nodes[i].clone();
+            i = (i + 1) % self.nodes.len();
+            let node = self.nodes[i].clone();
             let permit = semaphore.clone().acquire_owned().await;
             let tx_hash = tx.hash();
             let begin_time = Instant::now();
@@ -373,7 +368,7 @@ impl TransactionConsumer {
                         use_time = cost_time;
                         // double spending, discard this transaction
                         ckb_testkit::info!(
-                    "loop count :{} failed to send tx {:#x}, error: {}",
+                    "consumer count :{} failed to send tx {:#x}, error: {}",
                     loop_count,
                     tx_hash,
                     err
@@ -405,7 +400,7 @@ impl TransactionConsumer {
                     duration_tps = duration_count / (log_duration_time as usize);
                 }
                 ckb_testkit::info!(
-                "loop total count:{} transactions, {} duplicated {} , transaction producer :{}, log duration {} s,duration send tx tps {},duration avg delay {}ms",
+                "[TransactionConsumer] consumer :{} transactions, {} duplicated {} , transaction producer  remaining :{}, log duration {} s,duration send tx tps {},duration avg delay {}ms",
                 loop_count,
                 benched_transactions,
                 duplicated_transactions,
