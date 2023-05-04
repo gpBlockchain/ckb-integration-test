@@ -24,7 +24,7 @@ jobs:
         build: [linux]
         include:
           - build: linux
-            os: ubuntu-18.04
+            os: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - uses: olegtarasov/get-tag@v2.1
