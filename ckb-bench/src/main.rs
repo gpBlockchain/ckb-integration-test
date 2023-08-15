@@ -8,16 +8,18 @@ mod user;
 mod stat;
 mod prepare;
 mod bench;
+mod html;
+mod prometheus;
 #[cfg(test)]
 mod tests;
 mod rpc;
 
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read};
 use tokio::runtime::Runtime;
 use crate::bench::{AddTxParam, LiveCellProducer, TransactionConsumer, TransactionProducer};
 use crate::prepare::{collect, derive_privkeys, dispatch};
-use crate::watcher::Watcher;
+use crate::watcher::{Watcher};
 use ckb_types::core::{BlockNumber};
 use clap::{value_t_or_exit, values_t_or_exit, App, Arg, ArgMatches, SubCommand, value_t};
 use crossbeam_channel::{bounded};
@@ -36,7 +38,8 @@ use crate::nodes::Nodes;
 use crate::user::User;
 use ckb_crypto::secp::{Privkey};
 use crate::node::Node;
-
+use crate::html::{generate_html_report, TotalReport, write_to_file};
+use crate::prometheus::{MemoryUsageClient, MemoryUsageReport};
 
 #[macro_export]
 macro_rules! prompt_and_exit {
@@ -46,6 +49,7 @@ macro_rules! prompt_and_exit {
         ::std::process::exit(1);
     })
 }
+
 
 fn main() {
     let _logger = init_logger();
@@ -309,13 +313,39 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     get_add_tx_param_by_path(add_tx_params_path.into())
                 },
             );
+
             spawn(move || {
                 transaction_producer.run(live_cell_receiver, transaction_sender, 3);
             });
             let watcher_status = Watcher::new(nodes.clone().into());
+
+            let (pending_pool_sender, pending_pool_receiver) = bounded(1000000);
             spawn(move || {
-                watcher_status.check_statue(3, t_bench);
+                let ret = watcher_status.check_statue(3, t_bench);
+                pending_pool_sender.send(ret).unwrap();
             });
+
+            let (memory_usage_report_sender, memory_usage_report_receiver) = bounded(1000000);
+
+            match value_t!(arguments, "prometheus-url", String) {
+                Ok(url) => {
+                    let client = MemoryUsageClient::new(url.clone());
+
+                    crate::info!("start monit memory usage prometheus-url:{}",url);
+                    spawn(move || {
+                        let ret = client.get_memory_usage(Duration::from_secs(3).as_secs(), t_bench);
+                        memory_usage_report_sender.send(ret).unwrap();
+                    });
+                }
+                Err(_) => {
+                    memory_usage_report_sender.send(MemoryUsageReport {
+                        ckb_sys_mem_process_rss_mb: vec![],
+                        ckb_sys_mem_process_vms_mb: vec![],
+                        timestamp: vec![],
+                    }).unwrap();
+                }
+            };
+
             let watcher = Watcher::new(nodes.clone().into());
             if !is_smoking_test {
                 while !watcher.is_zero_load() {
@@ -332,19 +362,22 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let tx_consumer = TransactionConsumer::new(nodes.clone());
             crate::info!("---- tx_consumer------");
 
-            match value_t!(arguments, "tps", usize) {
+            let run_report_result = match value_t!(arguments, "tps", usize) {
                 Ok(tps) => {
-                    rt.block_on(
+                    Some(rt.block_on(
                         tx_consumer.run_tps(transaction_receiver, bench_concurrent_requests_number, tps, t_bench)
-                    );
+                    ))
                 }
                 Err(_) => {
                     rt.block_on(
                         tx_consumer.run(transaction_receiver, bench_concurrent_requests_number, t_tx_interval, t_bench)
                     );
+                    None
                 }
-            }
+            };
 
+            let pending_pool_report = pending_pool_receiver.recv().unwrap();
+            let memory_usage_report = memory_usage_report_receiver.recv().unwrap();
 
             if is_skip_report {
                 crate::info!("----finished-----");
@@ -369,6 +402,23 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 t_stat,
                 Some(t_tx_interval),
             );
+            let block_stat = stat::stat_metric(&nodes[0], (zero_load_number.value() + 1).into(),
+                                               fixed_tip_number.into());
+
+            match run_report_result {
+                None => {}
+                Some(run_report) => {
+                    let html_data = generate_html_report(&TotalReport {
+                        block_report: block_stat,
+                        stat_report: report.clone(),
+                        pool_report: pending_pool_report,
+                        run_report,
+                        memory_usage_report,
+                    });
+                    // Write JSON data to a file
+                    write_to_file("index.html", &html_data).expect("TODO: panic message");
+                }
+            }
             crate::info!(
                 "markdown report: | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
                 report.ckb_version,
@@ -539,7 +589,13 @@ fn clap_app() -> App<'static, 'static> {
                         .required(false)
                         .help("Set the fixed load for transactions per second (TPS)")
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
-                )
+                ).arg(
+                Arg::with_name("prometheus-url")
+                    .long("prometheus-url")
+                    .value_name("URL")
+                    .required(false)
+                    .help("node prometheus url")
+            )
             ,
         )
         .subcommand(

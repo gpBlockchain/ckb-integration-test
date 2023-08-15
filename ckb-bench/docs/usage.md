@@ -52,7 +52,8 @@ CKB-bench provides several options for specifying benchmark scenarios. Here is a
     --bench-time-ms 300000 \
     --tx-interval-ms 10 \
     --concurrent-requests 10 \
-    --add-tx-params contract.json
+    --add-tx-params contract.json \
+    --prometheus-url http://18.162.180.86:8100/
   ```
 
 - `--n-users 9000`: Use the `9000` derived users to bench
@@ -61,6 +62,16 @@ CKB-bench provides several options for specifying benchmark scenarios. Here is a
 - `--tx-interval-ms 10`: Delay 10 milliseconds between sending continuous transactions
 - `--concurrent-requests 10` : 10 users are conducting load testing simultaneously.
 - `add-tx-params contract.json` When constructing a transaction, include `dep` and `type`, `data`.
+- `--prometheus-url http://18.162.180.86:8100/` Monitor the Prometheus port of the CKB node and read the memory usage of the CKB node.
+
+enable ckb prometheus port (not support macos)
+```toml
+[metrics.exporter.prometheus]
+target = {type = "prometheus",listen_address="0.0.0.0:8100"}
+
+[memory_tracker]
+interval = 3
+```
 
 File format : contract.json 
 ```json

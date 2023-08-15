@@ -3,7 +3,7 @@ use lru::LruCache;
 use std::collections::HashMap;
 use std::ops::{Add, Sub};
 use std::sync::{Arc};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 use tokio::sync::Semaphore;
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt, StreamExt};
@@ -22,7 +22,19 @@ use crate::node::Node;
 use crate::user::User;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use std::time::{UNIX_EPOCH};
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RunReport {
+    tx_size: usize,
+    begin_time: u128,
+    end_time: u128,
+    avg_delay_ms: usize,
+    delay_ms: Vec<usize>,
+    tps: Vec<usize>,
+    timestamp: Vec<u128>,
+    sum_tps: usize,
+}
 
 pub struct LiveCellProducer {
     users: Vec<User>,
@@ -432,17 +444,17 @@ impl TransactionConsumer {
                         use_time = cost_time;
                         // double spending, discard this transaction
                         crate::info!(
-                    "consumer count :{} failed to send tx {:#x}, error: {}",
-                    loop_count,
-                    tx_hash,
-                    err
-                );
+                            "consumer count :{} failed to send tx {:#x}, error: {}",
+                            loop_count,
+                            tx_hash,
+                            err
+                        );
                         if !err.contains("TransactionFailedToResolve") {
                             crate::error!(
-                        "failed to send tx {:#x}, error: {}",
-                        tx_hash,
-                        err
-                    );
+                                "failed to send tx {:#x}, error: {}",
+                                tx_hash,
+                                err
+                            );
                         }
                     }
                     Some(Err(e)) => {
@@ -458,6 +470,7 @@ impl TransactionConsumer {
                 last_log_duration = Instant::now();
                 let duration_count = transactions_processed.swap(0, Ordering::Relaxed);
                 let duration_total_time = transactions_total_time.swap(0, Ordering::Relaxed);
+                let total_tps = loop_count * 1000 / start_time.elapsed().as_millis() as usize;
                 let mut duration_tps = 0;
                 let mut duration_delay = 0;
                 if duration_count != 0 {
@@ -465,14 +478,15 @@ impl TransactionConsumer {
                     duration_tps = duration_count * 1000 / (elapsed.as_millis() as usize);
                 }
                 crate::info!(
-                "[TransactionConsumer] consumer :{} transactions, {} duplicated {} , transaction producer  remaining :{}, log duration {:?} ,duration send tx tps {},duration avg delay {}ms",
+                "[TransactionConsumer] consumer :{} transactions, {} duplicated {} , transaction producer  remaining :{}, log duration {:?} ,duration send tx tps {},duration avg delay {}ms ,sum tps:{}",
                 loop_count,
                 benched_transactions,
                 duplicated_transactions,
                 transaction_receiver.len(),
                 elapsed,
                 duration_tps,
-                duration_delay
+                duration_delay,
+                total_tps
             );
             }
             if start_time.elapsed() > t_bench {
@@ -487,12 +501,16 @@ impl TransactionConsumer {
         transaction_receiver: Receiver<TransactionView>,
         max_concurrent_requests: usize,
         tps: usize,
-        t_bench: Duration)
+        t_bench: Duration) -> RunReport
     {
+        let start_time_stamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
         let start_time = Instant::now();
         let mut last_log_duration = Instant::now();
         let mut benched_transactions = 0;
         let mut duplicated_transactions = 0;
+        let mut delay_ms = vec![];
+        let mut tps_vec = vec![];
+        let mut timestamp = vec![];
         let mut loop_count = 0;
         let mut i = 0;
         let log_duration_time = 3;
@@ -568,6 +586,7 @@ impl TransactionConsumer {
                 last_log_duration = Instant::now();
                 let duration_count = transactions_processed.swap(0, Ordering::Relaxed);
                 let duration_total_time = transactions_total_time.swap(0, Ordering::Relaxed);
+                let total_tps = loop_count * 1000 / start_time.elapsed().as_millis() as usize;
                 let mut duration_tps = 0;
                 let mut duration_delay = 0;
                 if duration_count != 0 {
@@ -575,21 +594,35 @@ impl TransactionConsumer {
                     duration_tps = duration_count * 1000000 / (elapsed.as_micros() as usize);
                 }
                 crate::info!(
-                    "[TransactionConsumer] consumer :{} transactions, {} duplicated {} , transaction producer  remaining :{}, log duration {:?} ,duration send tx tps {},duration avg delay {:?}",
+                    "[TransactionConsumer] consumer :{} transactions, {} duplicated {} , transaction producer  remaining :{}, log duration {:?} ,duration send tx tps {},duration avg delay {:?},sum tps:{}",
                         loop_count,
                         benched_transactions,
                         duplicated_transactions,
                         transaction_receiver.len(),
                         elapsed,
                         duration_tps,
-                        Duration::from_micros(duration_delay as u64)
+                        Duration::from_micros(duration_delay as u64),
+                        total_tps
                 );
                 t_tx_interval = dynamic_adjustment_internal(max_concurrent_requests, tps, duration_tps, t_tx_interval, Duration::from_micros(duration_delay as u64));
+                delay_ms.push(duration_delay);
+                tps_vec.push(duration_tps);
+                timestamp.push(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis());
             }
             if start_time.elapsed() > t_bench {
                 break;
             }
         }
+        return RunReport {
+            tx_size: loop_count,
+            begin_time: start_time_stamp,
+            end_time: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis(),
+            avg_delay_ms: delay_ms.iter().sum::<usize>() as usize / delay_ms.len() as usize,
+            delay_ms,
+            tps: tps_vec,
+            timestamp,
+            sum_tps: loop_count * 1000000 / (start_time.elapsed().as_micros() as usize),
+        };
     }
 }
 
@@ -636,6 +669,6 @@ fn dynamic_adjustment_internal(max_concurrent_requests: usize, tps: usize, lates
                 adjusted_interval,
                 latest_interval,
                 other_cost_time
-        );
+    );
     adjusted_interval
 }

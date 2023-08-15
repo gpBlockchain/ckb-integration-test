@@ -1,7 +1,8 @@
 use std::thread::sleep;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use ckb_jsonrpc_types::{HeaderView, TxPoolInfo};
 use crate::nodes::Nodes;
+use serde::{Deserialize, Serialize};
 
 /// Watcher watches the CKB node, it
 /// - Judge whether the CKB is zero-load.
@@ -14,9 +15,18 @@ pub struct Watcher {
     nodes: Nodes,
 }
 
-pub struct NodeStatus{
-    node_id:String,
-    tx_pool_info:TxPoolInfo
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PoolReport {
+    pending:Vec<u64>,
+    orphan:Vec<u64>,
+    proposed:Vec<u64>,
+    block_number:Vec<u64>,
+    timestamp:Vec<u128>,
+}
+
+pub struct NodeStatus {
+    node_id: String,
+    tx_pool_info: TxPoolInfo,
 }
 
 const N_BLOCKS: usize = 5;
@@ -27,22 +37,27 @@ impl Watcher {
     }
 
     pub fn check_statue(
-         &self,
+        &self,
         log_duration: u64,
-        t_bench: Duration
-    ) {
+        t_bench: Duration,
+    ) -> PoolReport {
         let start_time = Instant::now();
-
+        let mut pool_report  = PoolReport{
+            pending: vec![],
+            orphan: vec![],
+            proposed: vec![],
+            block_number: vec![],
+            timestamp: vec![],
+        };
         loop {
-
-            let nodes_status = self.nodes.nodes().map(|node|{
+            let nodes_status = self.nodes.nodes().map(|node| {
                 let raw_tx_pool = node.rpc_client().tx_pool_info().unwrap();
-                NodeStatus{
+                NodeStatus {
                     node_id: node.node_name().into(),
                     tx_pool_info: raw_tx_pool,
                 }
             });
-            if self.nodes.nodes().len() > 1{
+            if self.nodes.nodes().len() > 1 {
                 println!()
             }
             nodes_status.for_each(|status|
@@ -53,18 +68,21 @@ impl Watcher {
                     status.tx_pool_info.pending.value(),
                     status.tx_pool_info.orphan.value(),
                     status.tx_pool_info.proposed.value());
+
+                    pool_report.pending.push(status.tx_pool_info.pending.value().into());
+                    pool_report.orphan.push(status.tx_pool_info.orphan.value().into());
+                    pool_report.proposed.push(status.tx_pool_info.proposed.value().into());
+                    pool_report.block_number.push(status.tx_pool_info.tip_number.value().into());
+                    pool_report.timestamp.push(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis());
                 }
             );
+
             sleep(Duration::from_secs(log_duration));
             if start_time.elapsed() > t_bench {
                 break;
             }
-
-
         }
-
-
-
+        return pool_report;
     }
 
     pub fn is_zero_load(&self) -> bool {

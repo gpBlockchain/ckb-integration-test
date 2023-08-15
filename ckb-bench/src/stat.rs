@@ -1,3 +1,4 @@
+use std::ops::Sub;
 use serde_derive::{Deserialize, Serialize};
 use std::time::Duration;
 use ckb_types::core::{BlockNumber, BlockView, HeaderView};
@@ -31,11 +32,20 @@ pub struct Report {
     pub average_block_transactions_size: usize,
     /// Average block interval in milliseconds
     pub average_block_time_ms: u64,
-
     /// Total transactions
     pub total_transactions: usize,
     /// Total transactions size
     pub total_transactions_size: usize,
+
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BlockReport {
+    pub block_delay_ms: Vec<u64>,
+    pub tps: Vec<f64>,
+    pub block_transaction_size: Vec<usize>,
+    pub block_number: Vec<u128>,
+    pub timestamp: Vec<u64>,
 }
 
 pub fn stat(
@@ -126,4 +136,48 @@ pub fn stat(
     best_report.n_inout = n_inout;
     best_report.delay_time_ms = delay_time.map(|t| t.as_millis() as u64);
     best_report
+}
+
+pub fn stat_metric(node: &Node,
+                   from_number: BlockNumber,
+                   to_number: BlockNumber) -> BlockReport {
+    assert_ne!(from_number, 0);
+    assert!(from_number < to_number);
+    //
+    let mut block_delay_ms = vec![];
+    let mut tps = vec![];
+    let mut block_transaction_size_list = vec![];
+    let mut block_number_list = vec![];
+    let mut timestamp = vec![];
+
+    let mut pre_block = {
+        let block = node.rpc_client().get_block_by_number(from_number.sub(1).into()).unwrap();
+        BlockView::from(block.unwrap())
+    };
+
+    for i in from_number as u64..to_number as u64 {
+        let curren_block = {
+            let block = node.rpc_client().get_block_by_number(i.into()).unwrap();
+            BlockView::from(block.unwrap())
+        };
+        // block_time_ms_list
+        block_delay_ms.push(curren_block.timestamp() - pre_block.timestamp());
+        // transactions_per_second_list
+        tps.push(curren_block.transactions().len() as f64 * 1000.0
+            / (curren_block.timestamp().saturating_sub(pre_block.timestamp())) as f64);
+        // block_transaction_size_list
+        block_transaction_size_list.push(curren_block.transactions().len());
+        // block_number_list
+        block_number_list.push(curren_block.number().into());
+        // block_time_stamp_list
+        timestamp.push(curren_block.timestamp());
+        pre_block = curren_block
+    }
+    return BlockReport {
+        block_delay_ms,
+        tps,
+        block_transaction_size:block_transaction_size_list,
+        block_number:block_number_list,
+        timestamp,
+    };
 }
