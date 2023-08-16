@@ -33,7 +33,7 @@ pub struct RunReport {
     delay_ms: Vec<usize>,
     tps: Vec<usize>,
     timestamp: Vec<u128>,
-    sum_tps: usize,
+    pub sum_tps: usize,
 }
 
 pub struct LiveCellProducer {

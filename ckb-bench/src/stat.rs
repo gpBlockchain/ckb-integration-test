@@ -36,7 +36,10 @@ pub struct Report {
     pub total_transactions: usize,
     /// Total transactions size
     pub total_transactions_size: usize,
-
+    /// set tps
+    pub set_send_tps:usize,
+    /// client send tps
+    pub client_send_tps:usize,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

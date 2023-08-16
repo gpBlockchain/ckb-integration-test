@@ -361,9 +361,10 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let rt = Runtime::new().unwrap();
             let tx_consumer = TransactionConsumer::new(nodes.clone());
             crate::info!("---- tx_consumer------");
-
+            let mut set_tps = 0;
             let run_report_result = match value_t!(arguments, "tps", usize) {
                 Ok(tps) => {
+                    set_tps = tps;
                     Some(rt.block_on(
                         tx_consumer.run_tps(transaction_receiver, bench_concurrent_requests_number, tps, t_bench)
                     ))
@@ -395,7 +396,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
 
             let t_stat = t_bench.div(2);
             let fixed_tip_number = watcher.get_fixed_header().inner.number;
-            let report = stat::stat(
+            let mut report = stat::stat(
                 &nodes[0],
                 (zero_load_number.value() + 1).into(),
                 fixed_tip_number.into(),
@@ -408,6 +409,8 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             match run_report_result {
                 None => {}
                 Some(run_report) => {
+                    report.set_send_tps = set_tps;
+                    report.client_send_tps = run_report.sum_tps;
                     let html_data = generate_html_report(&TotalReport {
                         block_report: block_stat,
                         stat_report: report.clone(),
@@ -420,7 +423,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 }
             }
             crate::info!(
-                "markdown report: | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
+                "markdown report: | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {}",
                 report.ckb_version,
                 report.transactions_per_second,
                 report.n_inout,
@@ -434,6 +437,8 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 report.total_transactions,
                 report.total_transactions_size,
                 report.transactions_size_per_second,
+                report.set_send_tps,
+                report.client_send_tps
             );
             crate::info!("metrics: {}", serde_json::json!(report));
         }
