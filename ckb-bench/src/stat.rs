@@ -42,7 +42,7 @@ pub struct Report {
     pub client_send_tps:usize,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize,Clone, Deserialize)]
 pub struct BlockReport {
     pub block_delay_ms: Vec<u64>,
     pub tps: Vec<f64>,

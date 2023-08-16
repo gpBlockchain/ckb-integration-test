@@ -3,8 +3,9 @@ use std::thread::sleep;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use regex::Regex;
+use crossbeam_channel::{Receiver};
 
-#[derive(Debug, Serialize,Deserialize)]
+#[derive(Debug, Serialize,Deserialize,Clone)]
 pub struct MemoryUsageReport {
     pub(crate) ckb_sys_mem_process_rss_mb: Vec<usize>,
     pub(crate) ckb_sys_mem_process_vms_mb: Vec<usize>,
@@ -24,12 +25,11 @@ impl MemoryUsageClient {
     pub fn get_memory_usage(
         &self,
         log_duration: u64,
-        t_bench: Duration,
+        stop_recv:Receiver<bool>
     ) -> MemoryUsageReport {
         let mut ckb_sys_mem_process_rss = vec![];
         let mut ckb_sys_mem_process_vms = vec![];
         let mut timestamp = vec![];
-        let start_time = Instant::now();
 
         loop {
             let response = self.client.get(self.url.as_str()).send().unwrap();
@@ -67,8 +67,9 @@ impl MemoryUsageClient {
 
 
             sleep(Duration::from_secs(log_duration));
-            if start_time.elapsed() > t_bench {
-                break;
+            match stop_recv.try_recv() {
+                Ok(_) => {break;}
+                Err(_) => {continue}
             }
         }
 

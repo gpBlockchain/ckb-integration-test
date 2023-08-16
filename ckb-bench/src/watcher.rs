@@ -15,13 +15,13 @@ pub struct Watcher {
     nodes: Nodes,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize,Clone)]
 pub struct PoolReport {
-    pending:Vec<u64>,
-    orphan:Vec<u64>,
-    proposed:Vec<u64>,
-    block_number:Vec<u64>,
-    timestamp:Vec<u128>,
+    pending: Vec<u64>,
+    orphan: Vec<u64>,
+    proposed: Vec<u64>,
+    block_number: Vec<u64>,
+    timestamp: Vec<u128>,
 }
 
 pub struct NodeStatus {
@@ -42,7 +42,7 @@ impl Watcher {
         t_bench: Duration,
     ) -> PoolReport {
         let start_time = Instant::now();
-        let mut pool_report  = PoolReport{
+        let mut pool_report = PoolReport {
             pending: vec![],
             orphan: vec![],
             proposed: vec![],
@@ -78,6 +78,11 @@ impl Watcher {
             );
 
             sleep(Duration::from_secs(log_duration));
+
+            if pool_report.pending.len() > 0 && pool_report.pending[pool_report.pending.len() - 1] > 0 {
+                continue;
+            }
+
             if start_time.elapsed() > t_bench {
                 break;
             }

@@ -24,7 +24,7 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::time::{UNIX_EPOCH};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize,Clone)]
 pub struct RunReport {
     tx_size: usize,
     begin_time: u128,
@@ -612,6 +612,18 @@ impl TransactionConsumer {
             if start_time.elapsed() > t_bench {
                 break;
             }
+        }
+        if delay_ms.len() == 0{
+            return RunReport {
+                tx_size: loop_count,
+                begin_time: start_time_stamp,
+                end_time: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis(),
+                avg_delay_ms: 0,
+                delay_ms,
+                tps: tps_vec,
+                timestamp,
+                sum_tps: loop_count * 1000000 / (start_time.elapsed().as_micros() as usize),
+            };
         }
         return RunReport {
             tx_size: loop_count,
