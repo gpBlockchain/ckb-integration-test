@@ -126,6 +126,11 @@ pub fn generate_html_report(data: &TotalReport) -> String {
             <input type='text' id='removeIdx' placeholder='0'>
             <button id='removeButton'>remove</button>
         </div>
+        <div>
+            <label for='copyIndex'>copy index:</label>
+            <input type='text' id='copyIndex' placeholder='0'>
+            <button id='copyButton'>copy json</button>
+        </div>
         <div class='module' id='module1'>
             <h3>Total Report</h3>
             <details>
@@ -221,12 +226,12 @@ pub fn generate_html_report(data: &TotalReport) -> String {
     });
 
     let jsonReports = [__replace__json__reports__];
-
     document.addEventListener('DOMContentLoaded', function () {
         const inputData = document.getElementById('inputData');
         const groupSizeData = document.getElementById('groupSize');
         const showButton = document.getElementById('showButton');
         const removeIdxButton = document.getElementById('removeButton');
+        const copyIdxButton = document.getElementById("copyButton");
         showButton.addEventListener('click', function () {
             jsonReports.push(JSON.parse(inputData.value))
             group_size = parseInt(groupSizeData.value)
@@ -235,10 +240,15 @@ pub fn generate_html_report(data: &TotalReport) -> String {
         });
         removeIdxButton.addEventListener('click', function () {
             const removeIndex = document.getElementById('removeIdx');
-            jsonReports.splice(parseInt(removeIndex), 1);
+            jsonReports.splice(parseInt(removeIndex.value), 1);
 
             generateReport(group_size)
         })
+        copyIdxButton.addEventListener('click', function () {
+            const copyIndex = document.getElementById("copyIndex");
+            navigator.clipboard.writeText(JSON.stringify(jsonReports[parseInt(copyIndex.value)]));
+        })
+
     });
 
     generateReport(group_size)
