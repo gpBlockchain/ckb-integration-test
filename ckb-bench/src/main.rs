@@ -62,6 +62,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
             let n_blocks = value_t_or_exit!(arguments, "n-blocks", u64);
             let mining_interval_ms = value_t_or_exit!(arguments, "mining-interval-ms", u64);
+            let min_tx_size = value_t_or_exit!(arguments, "min-tx-size", usize);
             let nodes: Nodes = rpc_urls
                 .iter()
                 .map(|url| Node::init(url.as_str(), url.as_str()))
@@ -76,7 +77,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 .unwrap();
             if max_tip_number.value() == 0 {
                 for node in nodes.nodes() {
-                    node.mine(1);
+                    node.mine(1, min_tx_size);
                     break;
                 }
             }
@@ -102,7 +103,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let mut last_print_instant = Instant::now();
             loop {
                 for node in nodes.nodes() {
-                    node.mine(1);
+                    node.mine(1, min_tx_size);
                     mined_n_blocks += 1;
                     if n_blocks != 0 && mined_n_blocks >= n_blocks {
                         return;
@@ -416,8 +417,8 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                         block_report: block_stat.clone(),
                         stat_report: report.clone(),
                         pool_report: pending_pool_report.clone(),
-                        run_report:run_report.clone(),
-                        memory_usage_report:memory_usage_report.clone(),
+                        run_report: run_report.clone(),
+                        memory_usage_report: memory_usage_report.clone(),
                     });
                     let json_data = serde_json::to_string(&TotalReport {
                         block_report: block_stat,
@@ -428,7 +429,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     }).unwrap();
 
                     // Write JSON data to a file
-                    write_to_file("report.json",&json_data ).expect("TODO: panic message");
+                    write_to_file("report.json", &json_data).expect("TODO: panic message");
                     write_to_file("report.html", &html_data).expect("TODO: panic message");
                 }
             }
@@ -518,7 +519,17 @@ fn clap_app() -> App<'static, 'static> {
                         .help("How long it takes to mine a block.\nNote that it is different with \"block time interval\", we can/should not control the block time interval")
                         .required(true)
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
-                ),
+                ).arg(
+                Arg::with_name("min-tx-size")
+                    .short("t")
+                    .long("min-tx-size")
+                    .value_name("NUMBER")
+                    .takes_value(true)
+                    .help("How min tx to mine, 0 means empty block could miner")
+                    .default_value("0")
+                    .required(true)
+                    .validator(|s| s.parse::<usize>().map(|_| ()).map_err(|err| err.to_string())),
+            ),
         )
         .subcommand(
             SubCommand::with_name("bench")

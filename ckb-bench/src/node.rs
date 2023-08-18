@@ -38,7 +38,6 @@ pub fn get_or_create_ckb_client(key: String) -> Arc<CkbRpcClient> {
 }
 
 
-
 #[derive(Debug, Clone, Default)]
 pub struct NodeOptions {
     pub node_name: String,
@@ -47,7 +46,7 @@ pub struct NodeOptions {
 pub struct Node {
     pub(super) rpc_client: String,
     //todo Remove async_client : because rust sdk not have async rpc client , blocking
-    pub(super) async_client:RpcClient,
+    pub(super) async_client: RpcClient,
     pub(super) indexer: String,
     pub(super) genesis_block: Option<BlockView>,
     // initialize when node start
@@ -56,7 +55,6 @@ pub struct Node {
 
 impl Node {
     pub fn init(ckb_rpc_url: &str, ckb_indexer_rpc_rul: &str) -> Self {
-
         get_or_create_ckb_client(ckb_indexer_rpc_rul.to_string());
         let ckb_client = get_or_create_ckb_client(ckb_rpc_url.to_string());
         let genesis_block = ckb_client.get_block_by_number(0.into()).unwrap();
@@ -68,7 +66,7 @@ impl Node {
         Self {
             rpc_client: ckb_rpc_url.to_string(),
             indexer: ckb_indexer_rpc_rul.to_string(),
-            async_client:client,
+            async_client: client,
             genesis_block,
             node_options: node_opt,
         }
@@ -80,8 +78,8 @@ impl Node {
         get_or_create_ckb_client(self.rpc_client.to_string())
     }
 
-    pub fn async_client(&self) ->&RpcClient{
-            &self.async_client
+    pub fn async_client(&self) -> &RpcClient {
+        &self.async_client
     }
 
     pub fn get_tip_block(&self) -> BlockView {
@@ -151,10 +149,13 @@ impl Node {
         //TODO : check last_cursor is none ?
     }
 
-    pub fn mine(&self, n_blocks: u64) {
+    pub fn mine(&self, n_blocks: u64, min_tx_size: usize) {
         for _ in 0..n_blocks {
             let template = self.rpc_client().get_block_template(None, None, None).unwrap();
             let block = packed::Block::from(template);
+            if block.transactions().len() < min_tx_size || block.proposals().len() < min_tx_size {
+                continue;
+            }
             self.rpc_client().submit_block("".into(), block.into()).unwrap();
             self.wait_for_tx_pool();
         }
@@ -164,7 +165,7 @@ impl Node {
         let tip_number = self.rpc_client().get_tip_block_number().unwrap();
         if tip_number.value() < target_height.value() {
             let n_blocks = target_height.value() - tip_number.value();
-            self.mine(n_blocks.into());
+            self.mine(n_blocks.into(), 0);
         }
     }
 }
