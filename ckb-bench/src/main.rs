@@ -367,15 +367,14 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let run_report_result = match value_t!(arguments, "tps", usize) {
                 Ok(tps) => {
                     set_tps = tps;
-                    Some(rt.block_on(
+                    rt.block_on(
                         tx_consumer.run_tps(transaction_receiver, bench_concurrent_requests_number, tps, t_bench)
-                    ))
+                    )
                 }
                 Err(_) => {
                     rt.block_on(
                         tx_consumer.run(transaction_receiver, bench_concurrent_requests_number, t_tx_interval, t_bench)
-                    );
-                    None
+                    )
                 }
             };
             if is_skip_report {
@@ -408,31 +407,27 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let block_stat = stat::stat_metric(&nodes[0], (zero_load_number.value() + 1).into(),
                                                fixed_tip_number.into());
 
-            match run_report_result {
-                None => {}
-                Some(run_report) => {
-                    report.set_send_tps = set_tps;
-                    report.client_send_tps = run_report.sum_tps;
-                    let html_data = generate_html_report(&TotalReport {
-                        block_report: block_stat.clone(),
-                        stat_report: report.clone(),
-                        pool_report: pending_pool_report.clone(),
-                        run_report: run_report.clone(),
-                        memory_usage_report: memory_usage_report.clone(),
-                    });
-                    let json_data = serde_json::to_string(&TotalReport {
-                        block_report: block_stat,
-                        stat_report: report.clone(),
-                        pool_report: pending_pool_report,
-                        run_report,
-                        memory_usage_report,
-                    }).unwrap();
+            report.set_send_tps = set_tps;
+            report.client_send_tps = run_report_result.sum_tps;
+            let html_data = generate_html_report(&TotalReport {
+                block_report: block_stat.clone(),
+                stat_report: report.clone(),
+                pool_report: pending_pool_report.clone(),
+                run_report: run_report_result.clone(),
+                memory_usage_report: memory_usage_report.clone(),
+            });
+            let json_data = serde_json::to_string(&TotalReport {
+                block_report: block_stat,
+                stat_report: report.clone(),
+                pool_report: pending_pool_report,
+                run_report: run_report_result,
+                memory_usage_report,
+            }).unwrap();
 
-                    // Write JSON data to a file
-                    write_to_file("report.json", &json_data).expect("TODO: panic message");
-                    write_to_file("report.html", &html_data).expect("TODO: panic message");
-                }
-            }
+            // Write JSON data to a file
+            write_to_file("report.json", &json_data).expect("TODO: panic message");
+            write_to_file("report.html", &html_data).expect("TODO: panic message");
+
             crate::info!(
                 "markdown report: | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {}",
                 report.ckb_version,

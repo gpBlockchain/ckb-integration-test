@@ -1,11 +1,11 @@
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::thread::sleep;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use regex::Regex;
 use crossbeam_channel::{Receiver};
 
-#[derive(Debug, Serialize,Deserialize,Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MemoryUsageReport {
     pub(crate) ckb_sys_mem_process_rss_mb: Vec<usize>,
     pub(crate) ckb_sys_mem_process_vms_mb: Vec<usize>,
@@ -25,7 +25,7 @@ impl MemoryUsageClient {
     pub fn get_memory_usage(
         &self,
         log_duration: u64,
-        stop_recv:Receiver<bool>
+        stop_recv: Receiver<bool>,
     ) -> MemoryUsageReport {
         let mut ckb_sys_mem_process_rss = vec![];
         let mut ckb_sys_mem_process_vms = vec![];
@@ -42,10 +42,10 @@ impl MemoryUsageClient {
                 let number: Result<usize, _> = value.parse();
                 match number {
                     Ok(number) => {
-                        ckb_sys_mem_process_rss.push(number / 1024 /1024 as usize)
+                        ckb_sys_mem_process_rss.push(number / 1024 / 1024 as usize)
                     }
                     Err(err1) => {
-                        println!("rss is empty:{}",err1);
+                        println!("rss is empty:{}", err1);
                         ckb_sys_mem_process_rss.push(0)
                     }
                 }
@@ -55,10 +55,10 @@ impl MemoryUsageClient {
                 let number: Result<usize, _> = value.parse();
                 match number {
                     Ok(number) => {
-                        ckb_sys_mem_process_vms.push(number / 1024 /1024 as usize)
+                        ckb_sys_mem_process_vms.push(number / 1024 / 1024 as usize)
                     }
                     Err(err) => {
-                        println!("vms is empty:{}",err);
+                        println!("vms is empty:{}", err);
                         ckb_sys_mem_process_vms.push(0)
                     }
                 }
@@ -68,14 +68,14 @@ impl MemoryUsageClient {
 
             sleep(Duration::from_secs(log_duration));
             match stop_recv.try_recv() {
-                Ok(_) => {break;}
-                Err(_) => {continue}
+                Ok(_) => { break; }
+                Err(_) => { continue; }
             }
         }
 
         return MemoryUsageReport {
-            ckb_sys_mem_process_rss_mb:ckb_sys_mem_process_rss,
-            ckb_sys_mem_process_vms_mb:ckb_sys_mem_process_vms,
+            ckb_sys_mem_process_rss_mb: ckb_sys_mem_process_rss,
+            ckb_sys_mem_process_vms_mb: ckb_sys_mem_process_vms,
             timestamp,
         };
     }

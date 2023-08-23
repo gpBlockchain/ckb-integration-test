@@ -24,7 +24,7 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::time::{UNIX_EPOCH};
 
-#[derive(Debug, Serialize, Deserialize,Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RunReport {
     tx_size: usize,
     begin_time: u128,
@@ -63,7 +63,7 @@ impl LiveCellProducer {
         Self {
             users,
             nodes,
-            seen_out_points: LruCache::new(lrc_cache_size),
+            seen_out_points: LruCache::new(lrc_cache_size * 2),
         }
     }
 
@@ -111,7 +111,7 @@ impl LiveCellProducer {
             }
             if fist_send_finished {
                 fist_send_finished = false;
-                self.seen_out_points.resize(count + 10)
+                self.seen_out_points.resize(count * 2)
             }
             crate::debug!("[LiveCellProducer] delay:{:?},total producer:{}",current_loop_start_time.elapsed(),count);
         }
@@ -372,6 +372,11 @@ impl TransactionProducer {
     }
 }
 
+pub enum RunType {
+    TPS(usize),
+    INTERVAL(Duration),
+}
+
 pub struct TransactionConsumer {
     nodes: Vec<Node>,
 }
@@ -389,110 +394,8 @@ impl TransactionConsumer {
         transaction_receiver: Receiver<TransactionView>,
         max_concurrent_requests: usize,
         t_tx_interval: Duration,
-        t_bench: Duration)
-    {
-        let start_time = Instant::now();
-        let mut last_log_duration = Instant::now();
-        let mut benched_transactions = 0;
-        let mut duplicated_transactions = 0;
-        let mut loop_count = 0;
-        let mut i = 0;
-        let log_duration_time = 3;
-
-        let semaphore = Arc::new(Semaphore::new(max_concurrent_requests));
-        let transactions_processed = Arc::new(AtomicUsize::new(0));
-        let transactions_total_time = Arc::new(AtomicUsize::new(0));
-
-        let mut pending_tasks = FuturesUnordered::new();
-
-        loop {
-            loop_count += 1;
-            let tx = transaction_receiver
-                .recv_timeout(Duration::from_secs(60 * 3))
-                .expect("timeout to wait transaction_receiver");
-            if t_tx_interval.as_millis() != 0 {
-                async_sleep(t_tx_interval).await;
-            }
-
-            i = (i + 1) % self.nodes.len();
-            let node = self.nodes[i].clone();
-            let permit = semaphore.clone().acquire_owned().await;
-            let tx_hash = tx.hash();
-            let begin_time = Instant::now();
-            let task = async move {
-                let result = maybe_retry_send_transaction_async(&node, &tx).await;
-                drop(permit);
-                (result, tx_hash, Instant::now() - begin_time)
-            };
-
-            pending_tasks.push(tokio::spawn(task));
-            while let Some(result) = pending_tasks.next().now_or_never() {
-                transactions_processed.fetch_add(1, Ordering::Relaxed);
-
-                let mut use_time = Duration::from_millis(0);
-
-                match result {
-                    Some(Ok((Ok(is_accepted), _tx_hash, cost_time))) => {
-                        use_time = cost_time;
-                        if is_accepted {
-                            benched_transactions += 1;
-                        } else {
-                            duplicated_transactions += 1;
-                        }
-                    }
-                    Some(Ok((Err(err), tx_hash, cost_time))) => {
-                        use_time = cost_time;
-                        // double spending, discard this transaction
-                        crate::info!(
-                            "consumer count :{} failed to send tx {:#x}, error: {}",
-                            loop_count,
-                            tx_hash,
-                            err
-                        );
-                        if !err.contains("TransactionFailedToResolve") {
-                            crate::error!(
-                                "failed to send tx {:#x}, error: {}",
-                                tx_hash,
-                                err
-                            );
-                        }
-                    }
-                    Some(Err(e)) => {
-                        eprintln!("Error in task: {:?}", e);
-                    }
-                    None => break,
-                }
-                transactions_total_time.fetch_add(use_time.as_millis() as usize, Ordering::Relaxed);
-            }
-
-            if last_log_duration.elapsed() > Duration::from_secs(log_duration_time) {
-                let elapsed = last_log_duration.elapsed();
-                last_log_duration = Instant::now();
-                let duration_count = transactions_processed.swap(0, Ordering::Relaxed);
-                let duration_total_time = transactions_total_time.swap(0, Ordering::Relaxed);
-                let total_tps = loop_count * 1000 / start_time.elapsed().as_millis() as usize;
-                let mut duration_tps = 0;
-                let mut duration_delay = 0;
-                if duration_count != 0 {
-                    duration_delay = duration_total_time / (duration_count as usize);
-                    duration_tps = duration_count * 1000 / (elapsed.as_millis() as usize);
-                }
-                crate::info!(
-                "[TransactionConsumer] consumer :{} transactions, {} duplicated {} , transaction producer  remaining :{}, log duration {:?} ,duration send tx tps {},duration avg delay {}ms ,sum tps:{}",
-                loop_count,
-                benched_transactions,
-                duplicated_transactions,
-                transaction_receiver.len(),
-                elapsed,
-                duration_tps,
-                duration_delay,
-                total_tps
-            );
-            }
-            if start_time.elapsed() > t_bench {
-                break;
-            }
-        }
+        t_bench: Duration) -> RunReport {
+        self.run_internal(transaction_receiver, max_concurrent_requests, RunType::INTERVAL(t_tx_interval), t_bench).await
     }
 
 
@@ -501,8 +404,16 @@ impl TransactionConsumer {
         transaction_receiver: Receiver<TransactionView>,
         max_concurrent_requests: usize,
         tps: usize,
-        t_bench: Duration) -> RunReport
-    {
+        t_bench: Duration) -> RunReport {
+        self.run_internal(transaction_receiver, max_concurrent_requests, RunType::TPS(tps), t_bench).await
+    }
+
+
+    pub async fn run_internal(&self,
+                              transaction_receiver: Receiver<TransactionView>,
+                              max_concurrent_requests: usize,
+                              run_type: RunType,
+                              t_bench: Duration) -> RunReport {
         let start_time_stamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
         let start_time = Instant::now();
         let mut last_log_duration = Instant::now();
@@ -514,7 +425,16 @@ impl TransactionConsumer {
         let mut loop_count = 0;
         let mut i = 0;
         let log_duration_time = 3;
-        let mut t_tx_interval = Duration::from_millis((Duration::from_secs(max_concurrent_requests as u64).as_millis() / (tps as u128 as u128)) as u64);
+        let mut t_tx_interval = match run_type {
+            RunType::TPS(tps) => {
+                Duration::from_millis((Duration::from_secs(max_concurrent_requests as u64).as_millis() / (tps as u128 as u128)) as u64)
+            }
+            RunType::INTERVAL(interval) => {
+                interval
+            }
+        };
+
+
         let semaphore = Arc::new(Semaphore::new(max_concurrent_requests));
         let transactions_processed = Arc::new(AtomicUsize::new(0));
         let transactions_total_time = Arc::new(AtomicUsize::new(0));
@@ -604,7 +524,14 @@ impl TransactionConsumer {
                         Duration::from_micros(duration_delay as u64),
                         total_tps
                 );
-                t_tx_interval = dynamic_adjustment_internal(max_concurrent_requests, tps, duration_tps, t_tx_interval, Duration::from_micros(duration_delay as u64));
+                t_tx_interval = match run_type {
+                    RunType::TPS(tps) => {
+                        dynamic_adjustment_internal(max_concurrent_requests, tps, duration_tps, t_tx_interval, Duration::from_micros(duration_delay as u64))
+                    }
+                    RunType::INTERVAL(interval) => {
+                        interval
+                    }
+                };
                 delay_ms.push(duration_delay);
                 tps_vec.push(duration_tps);
                 timestamp.push(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis());
@@ -613,7 +540,7 @@ impl TransactionConsumer {
                 break;
             }
         }
-        if delay_ms.len() == 0{
+        if delay_ms.len() == 0 {
             return RunReport {
                 tx_size: loop_count,
                 begin_time: start_time_stamp,
