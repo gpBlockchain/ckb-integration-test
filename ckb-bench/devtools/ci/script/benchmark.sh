@@ -8,7 +8,6 @@
 
 
 set -euo pipefail
-set -x
 
 download_ckb_version="latest"
 AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
