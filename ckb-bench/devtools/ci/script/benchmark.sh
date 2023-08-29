@@ -18,7 +18,7 @@ GITHUB_TOKEN=${GITHUB_TOKEN}
 GITHUB_REF_NAME="develop"
 GITHUB_REPOSITORY="nervosnetwork/ckb"
 START_TIME=${START_TIME:-"$(date +%Y-%m-%d' '%H:%M:%S.%6N)"}
-GITHUB_BRANCH=GITHUB_REF_NAME
+GITHUB_BRANCH=$GITHUB_REF_NAME
 
 JOB_ID=${JOB_ID:-"benchmark-$(date +'%Y-%m-%d')-in-10h"}
 SCRIPT_PATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
@@ -113,6 +113,7 @@ function ansible_deploy_download_ckb() {
     ckb_remote_url=`curl --silent "https://api.github.com/repos/nervosnetwork/ckb/releases/latest" | jq -r ".assets[].browser_download_url" | grep unknown-linux-gnu-portable | grep -v asc`
     cd $ANSIBLE_DIRECTORY
     ansible-playbook playbook.yml \
+      -e 'hostname=instances' \
       -e "ckb_download_url=$ckb_remote_url" \
       -t ckb_install,ckb_configure
     return
@@ -120,6 +121,7 @@ function ansible_deploy_download_ckb() {
   ckb_remote_url="https://github.com/nervosnetwork/ckb/releases/download/${download_ckb_version}/ckb_${download_ckb_version}_x86_64-unknown-centos-gnu.tar.gz"
   cd $ANSIBLE_DIRECTORY
   ansible-playbook playbook.yml \
+    -e 'hostname=instances' \
     -e "ckb_download_url=$ckb_remote_url" \
     -t ckb_install,ckb_configure
 
