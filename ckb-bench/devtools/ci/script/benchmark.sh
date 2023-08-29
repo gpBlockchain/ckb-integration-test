@@ -10,6 +10,7 @@
 
 set -euo pipefail
 
+download_ckb_version="latest"
 AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
 AWS_SECRET_KEY=${AWS_SECRET_KEY}
 AWS_EC2_TYPE=${AWS_EC2_TYPE:-"c5.xlarge"}
@@ -104,6 +105,26 @@ function ansible_deploy_ckb() {
         -t ckb_install,ckb_configure
 }
 
+
+function ansible_deploy_download_ckb() {
+  ansible_config
+
+  if [ ${download_ckb_version} == "latest" ]; then
+    ckb_remote_url=`curl --silent "https://api.github.com/repos/nervosnetwork/ckb/releases/latest" | jq -r ".assets[].browser_download_url" | grep unknown-linux-gnu-portable | grep -v asc`
+    cd $ANSIBLE_DIRECTORY
+    ansible-playbook playbook.yml \
+      -e "ckb_download_url=$ckb_remote_url" \
+      -t ckb_install,ckb_configure
+    return
+  fi
+  ckb_remote_url="https://github.com/nervosnetwork/ckb/releases/download/${download_ckb_version}/ckb_${download_ckb_version}_x86_64-unknown-centos-gnu.tar.gz"
+  cd $ANSIBLE_DIRECTORY
+  ansible-playbook playbook.yml \
+    -e "ckb_download_url=$ckb_remote_url" \
+    -t ckb_install,ckb_configure
+
+}
+
 # Wait for CKB synchronization completion.
 function ansible_wait_ckb_benchmark() {
     ansible_config
@@ -172,8 +193,9 @@ function main() {
         "run")
             job_setup
             terraform_apply
-            rust_build
-            ansible_deploy_ckb
+#            rust_build
+#            ansible_deploy_ckb
+            ansible_deploy_download_ckb
             ansible_wait_ckb_benchmark
             github_add_comment "$(markdown_report)"
             ;;
@@ -198,9 +220,6 @@ function main() {
             terraform_destroy
             job_clean
             ;;
-        "insert_report_to_postgres")
-          insert_report_to_postgres
-          ;;
         esac
 }
 

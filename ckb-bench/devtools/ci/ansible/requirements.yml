@@ -3,4 +3,4 @@
   version: main
 - src: https://github.com/cryptape/ansible-ckb-benchmark
   scm: git
-  version: main
+  version: debug
