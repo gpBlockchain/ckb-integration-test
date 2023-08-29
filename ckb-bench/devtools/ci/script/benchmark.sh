@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 # ENVIRONMENT VARIABLES:
 # 
 #   * AWS_ACCESS_KEY, required, the AWS access key
@@ -9,6 +8,7 @@
 
 
 set -euo pipefail
+set -x
 
 download_ckb_version="latest"
 AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
