@@ -20,14 +20,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        build: [linux, macos, windows]
+        build: [linux]
         include:
           - build: linux
             os: ubuntu-20.04
-          - build: macos
-            os: macos-latest
-          - build: windows
-            os: windows-latest
     steps:
     - uses: actions/checkout@v2
     - uses: olegtarasov/get-tag@v2.1
@@ -88,5 +84,3 @@ jobs:
       with:
         files: |
           ./Linux/ckb-bench-*
-          ./Windows/ckb-bench-*
-          ./macOS/ckb-bench-*
