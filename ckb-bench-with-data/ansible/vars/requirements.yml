@@ -1,3 +1,0 @@
-- src: https://github.com/cryptape/ansible-ckb
-  scm: git
-  version: main
