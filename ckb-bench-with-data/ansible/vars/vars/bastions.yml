@@ -1,0 +1,19 @@
+ckb_urls: [ "http://172.31.37.178:8010,http://172.31.45.100:8011,http://172.31.36.9:8012" ]
+ckb_mining_interval_ms: 8000
+
+# {{ ckb_benchmark_workspace }}/ckb-bench bench \
+#          --rpc-urls {{ ckb_benchmark_url }} \
+#          --n-users  {{ ckb_benchmark_n_users }} \
+#          --n-inout             {{ ckb_bench_n_inout }} \
+#          --tx-interval-ms      {{ ckb_bench_tx_interval_ms }} \
+#          --bench-time-ms       {{ ckb_bench_time_ms }} \
+#          --concurrent-requests {{ ckb_bench_concurrent_requests }} \
+
+ckb_benchmark_url: "http://172.31.37.178:8010"
+ckb_benchmark_n_users: 100
+ckb_benchmark_owner_privkey: "dd50cac37ec6dd12539a968c1a2cbedda75bd8724f7bcad486548eaabb87fc8b"
+ckb_bench_n_inout: 1
+ckb_bench_tx_interval_ms: 1
+ckb_bench_time_ms: 1800000
+ckb_bench_concurrent_requests: 5
+ckb_bench_tps: 150
