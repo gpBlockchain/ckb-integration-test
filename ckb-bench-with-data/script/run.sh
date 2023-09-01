@@ -30,7 +30,10 @@ ansible_config() {
 
 function ssh_gen_key() {
     mkdir  -p $JOB_DIRECTORY/ssh
-    echo $SSH_ID > $SSH_PRIVATE_KEY_PATH
+    IFS='@' read -ra elements <<< "$SSH_ID"
+    for element in "${elements[@]}"; do
+      echo "$element" >> $SSH_PRIVATE_KEY_PATH
+    done
     echo $SSH_ID_PUB > $SSH_PUBLIC_KEY_PATH
     chmod 600 $SSH_PRIVATE_KEY_PATH
 }
