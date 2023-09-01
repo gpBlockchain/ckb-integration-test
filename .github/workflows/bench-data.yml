@@ -35,7 +35,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: jfoa-build-reports-${{ runner.os }}
-          path: ckb-bench-with-data/job/${JOB_ID}/ansible/logs
+          path: ckb-bench-with-data/job/benchmark-in-10h/ansible/logs
 
       - name: Setup upterm session
         if: ${{ failure() }}
