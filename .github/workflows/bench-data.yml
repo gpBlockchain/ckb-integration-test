@@ -22,7 +22,6 @@ jobs:
         env:
           JOB_ID: "benchmark-${{ github.repository_owner }}-${{ github.ref_name }}-${{ steps.date.outputs.date }}-in-10h"
         run: |
-          export GITHUB_BRANCH=${{ steps.comment-branch.outputs.head_ref }}
           ./ckb-bench-with-data/script/run.sh run
       - name: Set test state when benchmark success.
         if: ${{ success() }}
