@@ -22,7 +22,7 @@ jobs:
         env:
           JOB_ID: "benchmark-${{ github.repository_owner }}-${{ github.ref_name }}-${{ steps.date.outputs.date }}-in-10h"
         run: |
-          ./ckb-bench-with-data/script/run.sh run
+          bash ./ckb-bench-with-data/script/run.sh run
       - name: Set test state when benchmark success.
         if: ${{ success() }}
         run: echo "GITHUB_RUN_STATE=0" >> $GITHUB_ENV
@@ -46,4 +46,4 @@ jobs:
           JOB_ID: "benchmark-${{ github.repository_owner }}-${{ github.ref_name }}-${{ steps.date.outputs.date }}-in-10h"
         run: ｜
           pwd
-          ./ckb-bench-with-data/script/run.sh clean_job
+          bash ./ckb-bench-with-data/script/run.sh clean_job

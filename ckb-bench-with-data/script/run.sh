@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 
-set -x
 set -euo pipefail
 
 START_TIME=${START_TIME:-"$(date +%Y-%m-%d' '%H:%M:%S.%6N)"}
@@ -30,8 +29,10 @@ ansible_config() {
 }
 
 function ssh_gen_key() {
+    mkdir  -p $JOB_DIRECTORY/ssh
     echo $SSH_ID > $SSH_PRIVATE_KEY_PATH
     echo $SSH_ID_PUB > $SSH_PUBLIC_KEY_PATH
+    chmod 600 $SSH_PRIVATE_KEY_PATH
 }
 
 # Setup Ansible running environment.
@@ -145,7 +146,7 @@ function clean_ckb_bench_env(){
 main() {
   case $1 in
     "run")
-      job_setup
+#      job_setup
       ansible_deploy_download_ckb node1 "http://172.31.45.113:8000/data.1001w.tar.gz" &
       ansible_deploy_download_ckb node2 "http://172.31.45.113:8000/data.1001w.tar.gz" &
       ansible_deploy_download_ckb node3 "http://172.31.45.113:8000/data.1001w.tar.gz" &
