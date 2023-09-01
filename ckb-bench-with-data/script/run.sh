@@ -145,7 +145,7 @@ function clean_ckb_bench_env(){
 main() {
   case $1 in
     "run")
-#      job_setup
+      job_setup
       ansible_deploy_download_ckb node1 "http://172.31.45.113:8000/data.1001w.tar.gz" &
       ansible_deploy_download_ckb node2 "http://172.31.45.113:8000/data.1001w.tar.gz" &
       ansible_deploy_download_ckb node3 "http://172.31.45.113:8000/data.1001w.tar.gz" &
