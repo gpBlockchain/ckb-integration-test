@@ -18,7 +18,9 @@ jobs:
         uses: lhotari/action-upterm@v1
       - name: Start
         run: |
+          bash ./ckb-bench-with-data/script/run.sh setup
           bash ./ckb-bench-with-data/script/run.sh run
+
       - name: Set test state when benchmark success.
         if: ${{ success() }}
         run: echo "GITHUB_RUN_STATE=0" >> $GITHUB_ENV
@@ -35,5 +37,4 @@ jobs:
       - name: Clean Up
         if: ${{ always() }}
         run: ｜
-          pwd
-          bash ./ckb-bench-with-data/script/run.sh clean_job
+          bash /home/runner/work/ckb-integration-test/ckb-integration-test/ckb-bench-with-data/script/run.sh clean_job

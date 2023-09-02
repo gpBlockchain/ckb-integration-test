@@ -22,7 +22,7 @@
 
 - name: node1 RPC Call `local_node_info` get node id
   uri:
-    url: "http://{{ hostvars[n1]['ansible_host'] }}:{{ node1_rpc_port_number }}"
+    url: "http://{{ node1_p2p_ip }}:{{ node1_rpc_port_number }}"
     method: POST
     body_format: json
     body:
@@ -43,10 +43,16 @@
     node1_node_id: "{{ local_node_info.json.result.node_id }}"
 
 
+
+- name: Get node2 internal ip
+  set_fact:
+    node2_p2p_ip: "{{ hostvars[n2]['internal_ip'] }}"
+  when: hostvars[n2]['internal_ip'] is defined
+
 - name: Get node2 external ip
   set_fact:
     node2_p2p_ip: "{{ hostvars[n2]['ansible_host'] }}"
-
+  when: hostvars[n2]['internal_ip'] is not defined
 
 
 - name: Load variables from var file
@@ -60,7 +66,7 @@
 
 - name: add node
   uri:
-    url: "http://{{ hostvars[n2]['ansible_host'] }}:{{ node2_rpc_port_number }}"
+    url: "http://{{ node2_p2p_ip }}:{{ node2_rpc_port_number }}"
     method: POST
     body_format: json
     body:
@@ -75,20 +81,20 @@
       Content-Type: "application/json"
 
 
-- name: wait local_node_info.connections until connections > 1
-  uri:
-    url: "http://{{ hostvars[n2]['ansible_host'] }}:{{ node2_rpc_port_number }}"
-    method: POST
-    body_format: json
-    body:
-      id: 0
-      jsonrpc: "2.0"
-      method: "local_node_info"
-      params: []
-    headers:
-      Content-Type: "application/json"
-    return_content: yes
-  register: response
-  until: response.json.result.connections[2:]|int(16) > 0
-  retries: 10
-  delay: 10
+#- name: wait local_node_info.connections until connections > 0
+#  uri:
+#    url: "http://{{ node1_p2p_ip }}:{{ node2_rpc_port_number }}"
+#    method: POST
+#    body_format: json
+#    body:
+#      id: 0
+#      jsonrpc: "2.0"
+#      method: "local_node_info"
+#      params: []
+#    headers:
+#      Content-Type: "application/json"
+#    return_content: yes
+#  register: response
+#  until: response.json.result.connections[2:]|int(16) > 0
+#  retries: 10
+#  delay: 10

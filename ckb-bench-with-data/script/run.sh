@@ -84,7 +84,7 @@ function link_node_p2p() {
   ansible_config
   cd $ANSIBLE_DIRECTORY
   ansible-playbook playbook.yml \
-    -e "node=localhost" \
+    -e "node=$1" \
     -e "n1=$1" \
     -e "n2=$2" \
     -t ckb_add_node
@@ -149,17 +149,20 @@ function clean_ckb_bench_env(){
 main() {
   case $1 in
     "run")
-      job_setup
       ansible_deploy_download_ckb node1 "http://172.31.45.113:8000/data.1001w.tar.gz" &
       ansible_deploy_download_ckb node2 "http://172.31.45.113:8000/data.1001w.tar.gz" &
       ansible_deploy_download_ckb node3 "http://172.31.45.113:8000/data.1001w.tar.gz" &
       wait
-
+      echo " deploy successful"
+      sleep 20
+      echo "link nodes "
       link_node_p2p node1 node2
       link_node_p2p node1 node3
+      link_node_p2p node2 node1
       link_node_p2p node2 node3
-      wait
-
+      link_node_p2p node3 node1
+      link_node_p2p node3 node2
+      echo "start bench "
       ansible_wait_ckb_benchmark 1000
 
       clean_ckb_env node1 &
@@ -187,9 +190,11 @@ main() {
       job_setup
       ;;
     "deploy_ckb")
-      ansible_deploy_download_ckb node1
-      ansible_deploy_download_ckb node2
-      ansible_deploy_download_ckb node3
+      ansible_deploy_download_ckb node1 "http://172.31.45.113:8000/data.1001w.tar.gz" &
+      ansible_deploy_download_ckb node2 "http://172.31.45.113:8000/data.1001w.tar.gz" &
+      ansible_deploy_download_ckb node3 "http://172.31.45.113:8000/data.1001w.tar.gz" &
+      wait
+      echo "deploy successful"
       ;;
     "run_ckb")
       ansible_run_ckb node1
@@ -213,7 +218,10 @@ main() {
     "add_node")
       link_node_p2p node1 node2
       link_node_p2p node1 node3
+      link_node_p2p node2 node1
       link_node_p2p node2 node3
+      link_node_p2p node3 node1
+      link_node_p2p node3 node2
       ;;
     "bench")
       ansible_wait_ckb_benchmark 300
