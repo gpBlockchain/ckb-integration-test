@@ -11,16 +11,9 @@ jobs:
     env:
       SSH_ID: ${{ secrets.SSH_ID }}
       SSH_ID_PUB: ${{ secrets.SSH_ID_PUB }}
-    #      GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@v3
-      #        with:
-      #          repository: gpBlockchain/ckb-integration-test
-      #          ref: debug-bench
-
       - name: Start
-        env:
-          JOB_ID: "benchmark-${{ github.repository_owner }}-${{ github.ref_name }}-${{ steps.date.outputs.date }}-in-10h"
         run: |
           bash ./ckb-bench-with-data/script/run.sh run
       - name: Set test state when benchmark success.
@@ -42,8 +35,6 @@ jobs:
         uses: lhotari/action-upterm@v1
       - name: Clean Up
         if: ${{ always() }}
-        env:
-          JOB_ID: "benchmark-${{ github.repository_owner }}-${{ github.ref_name }}-${{ steps.date.outputs.date }}-in-10h"
         run: ｜
           pwd
           bash ./ckb-bench-with-data/script/run.sh clean_job
