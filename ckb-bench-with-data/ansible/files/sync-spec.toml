@@ -9,7 +9,7 @@ uncles_hash = "0x000000000000000000000000000000000000000000000000000000000000000
 nonce = "0x0"
 
 [genesis.genesis_cell]
-message = "ckb_dev"
+message = "1687311607669"
 
 [genesis.genesis_cell.lock]
 code_hash = "0x0000000000000000000000000000000000000000000000000000000000000000"
@@ -82,16 +82,20 @@ lock.args = "0x470dcdc5e44064909650113a274b3b36aecb6dc7"
 lock.hash_type = "type"
 
 [params]
-initial_primary_epoch_reward = 11_917_808_219178080
+initial_primary_epoch_reward = 1_917_808_21917808
 secondary_epoch_reward = 613_698_63013698
-max_block_cycles = 100_000_000_000
+max_block_cycles = 10_000_000_000
 cellbase_maturity = 0
 primary_epoch_reward_halving_interval = 8760
 epoch_duration_target = 14400
 genesis_epoch_length = 1000
 # For development and testing purposes only.
 # Keep difficulty be permanent if the pow is Dummy. (default: false)
-# permanent_difficulty_in_dummy = true
+permanent_difficulty_in_dummy = true
+
+[params.hardfork]
+ckb2023 = 0
+
 
 [pow]
 func = "Dummy"
