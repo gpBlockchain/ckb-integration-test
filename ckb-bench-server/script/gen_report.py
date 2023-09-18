@@ -8,8 +8,8 @@ from qiniu import Auth, put_file, etag
 # Qiniu configuration
 # QINIU_ACCESS_KEY = ""
 # QINIU_SECRET_KEY = ""
-QINIU_ACCESS_KEY = os.get("ACCESS_KEY")
-QINIU_SECRET_KEY = os.get("SECRET_KEY")
+QINIU_ACCESS_KEY = os.environ.get("ACCESS_KEY")
+QINIU_SECRET_KEY = os.environ.get("SECRET_KEY")
 QINIU_BUCKET_NAME = "acceptance-test"
 
 # Paths
