@@ -3,7 +3,6 @@
 set -euo pipefail
 
 set -euo pipefail
-set -x
 START_TIME=${START_TIME:-"$(date +%Y-%m-%d' '%H:%M:%S.%6N)"}
 #  latest or v0.110.0 ...
 download_ckb_version="v0.111.0-rc10"
