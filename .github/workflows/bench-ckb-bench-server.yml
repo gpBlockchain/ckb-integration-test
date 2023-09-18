@@ -36,5 +36,5 @@ jobs:
           path: ckb-bench-server/job/benchmark-in-10h/ansible/logs
       - name: Clean Up
         if: ${{ always() }}
-        run: ｜
+        run: |
           bash /home/runner/work/ckb-integration-test/ckb-integration-test/ckb-bench-server/script/benchmark.sh clean
