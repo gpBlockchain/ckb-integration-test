@@ -11,6 +11,9 @@ jobs:
     env:
       SSH_ID: ${{ secrets.SSH_ID }}
       SSH_ID_PUB: ${{ secrets.SSH_ID_PUB }}
+      GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
+      ACCESS_KEY: ${{ secrets.ACCESS_KEY }}
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
     steps:
       - uses: actions/checkout@v3
       - name: Setup upterm session
