@@ -21,10 +21,6 @@ jobs:
           cd ckb-bench-server
           bash run.sh
 
-      - name: Set test state when benchmark success.
-        id: state
-        if: ${{ success() }}
-        run: echo "GITHUB_RUN_STATE=0" >> $GITHUB_OUTPUT
       - name: Set test state when benchmark failed.
         id: state
         if: ${{ failure() }}
