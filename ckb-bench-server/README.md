@@ -55,9 +55,6 @@ The test results will be synchronized to the following [link](https://github.com
         <td colspan="3">total_transactions_size</td><td>Total transaction size</td>
     </tr>
     <tr>
-        <td colspan="3">set_send_tps</td><td>Client send TPS</td>
-    </tr>
-    <tr>
         <td colspan="3">set_send_tps</td><td>Client set send TPS, equivalent to `--tps`</td>
     </tr>
     <tr>
