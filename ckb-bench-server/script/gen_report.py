@@ -113,7 +113,7 @@ def json_to_key_value_md_table(json_data):
             else:
                 md_table += f"{value} |"
         md_table +="\n |"
-    return md_table
+    return md_table[:-1]
 
 if __name__ == '__main__':
 
