@@ -22,11 +22,13 @@ jobs:
           bash run.sh
 
       - name: Set test state when benchmark success.
+        id: state
         if: ${{ success() }}
-        run: echo "GITHUB_RUN_STATE=0" >> $GITHUB_ENV
+        run: echo "GITHUB_RUN_STATE=0" >> $GITHUB_OUTPUT
       - name: Set test state when benchmark failed.
+        id: state
         if: ${{ failure() }}
-        run: echo "GITHUB_RUN_STATE=1" >> $GITHUB_ENV
+        run: echo "GITHUB_RUN_STATE=1" >> $GITHUB_OUTPUT
 
       - name: Publish reports
         if: always()
@@ -35,6 +37,6 @@ jobs:
           name: jfoa-build-reports-${{ runner.os }}
           path: ckb-bench-server/job/benchmark-in-10h/ansible/logs
       - name: Clean Up
-        if: ${{ $GITHUB_RUN_STATE == 1 }}
+        if: ${{ steps.UpdateCkb.outputs.GITHUB_RUN_STATE == '1' }}
         run: |
           bash /home/runner/work/ckb-integration-test/ckb-integration-test/ckb-bench-server/script/benchmark.sh clean
