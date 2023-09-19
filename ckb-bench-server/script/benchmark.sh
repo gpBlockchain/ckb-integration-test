@@ -85,7 +85,25 @@ ansible_deploy_download_ckb() {
   cd $ANSIBLE_DIRECTORY
   ansible-playbook playbook.yml \
     -e "ckb_download_url=$ckb_remote_url node=$1 ckb_download_tmp_dir=/tmp" \
-    -t ckb_install,ckb_configure,ckb_restart,ckb_miner_start
+    -t ckb_install,ckb_configure,ckb_restart
+}
+
+ansible_ckb_miner_start() {
+  ansible_config
+  cd $ANSIBLE_DIRECTORY
+  ansible-playbook playbook.yml \
+    -e "node=$1" \
+    -t ckb_miner_start
+}
+
+link_node_p2p() {
+  ansible_config
+  cd $ANSIBLE_DIRECTORY
+  ansible-playbook playbook.yml \
+    -e "node=$1" \
+    -e "n1=$1" \
+    -e "n2=$2" \
+    -t ckb_add_node
 }
 
 
@@ -108,13 +126,24 @@ function main() {
     case $1 in
         "run")
             ansible_deploy_download_ckb node2
+            ansible_deploy_download_ckb node1
+            ansible_deploy_download_ckb node3
+            ansible_ckb_miner_start node2
+            link_node_p2p node2 node1
+            link_node_p2p node2 node3
+            link_node_p2p node1 node2
+            link_node_p2p node1 node3
+            link_node_p2p node3 node1
+            link_node_p2p node3 node2
             ansible_wait_ckb_benchmark
             ;;
         "setup")
             job_setup
             ;;
         "clean")
+            clean_ckb_env node1
             clean_ckb_env node2
+            clean_ckb_env node3
             clean_ckb_bench_env
             ;;
         esac
