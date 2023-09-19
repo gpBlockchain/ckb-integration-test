@@ -1,10 +1,12 @@
 # Keep consistent with https://github.com/keroro520/ansible-ckb/blob/master/defaults/main.yml
 # ckb_sync_target_number: 10
 ckb_workspace: "/home/ckb/gp/sync/node1"
+ckb_download_tmp_dir: "/ckb-data"
+
 ckb_service: sync_ckb_node1
 ckb_data_dir: "{{ ckb_workspace }}/data"
 ckb_rpc_listen_address: "0.0.0.0:8010"
-ckb_chain_spec_file: "sync-spec.toml"
+ckb_chain_spec_file: "benchmark-spec.toml"
 ckb_network_listen_addresses: ["/ip4/0.0.0.0/tcp/8050"]
 ckb_miner_poll_interval: 1000
 #ckb_data_local_source: "ckb-prepare-data/big-tx/data.tar.gz"
