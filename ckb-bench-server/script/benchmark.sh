@@ -20,7 +20,7 @@ function job_setup() {
     mkdir -p $JOB_DIRECTORY
     cp -r "$(dirname "$SCRIPT_PATH")/ansible"   $JOB_DIRECTORY/ansible
 
-#    ssh_gen_key
+    ssh_gen_key
     ansible_setup
 }
 
