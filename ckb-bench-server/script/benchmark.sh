@@ -74,14 +74,14 @@ function ansible_setup() {
 ansible_deploy_download_ckb() {
   ansible_config
   if [ ${download_ckb_version} == "latest" ]; then
-    ckb_remote_url="http://github-test-logs.ckbapp.dev/ckb/bin/ckb-latest-x86_64-unknown-linux-gnu-portable.tar.gz"
+    ckb_remote_url="http://github-test-logs.ckbapp.dev/ckb/bin/ckb-develop-x86_64-unknown-linux-gnu-portable.tar.gz"
     cd $ANSIBLE_DIRECTORY
     ansible-playbook playbook.yml \
       -e "ckb_download_url=$ckb_remote_url node=$1" \
       -t ckb_install,ckb_data_install,ckb_configure
     return
   fi
-  ckb_remote_url="http://github-test-logs.ckbapp.dev/ckb/bin/ckb-latest-x86_64-unknown-linux-gnu-portable.tar.gz"
+  ckb_remote_url="http://github-test-logs.ckbapp.dev/ckb/bin/ckb-develop-x86_64-unknown-linux-gnu-portable.tar.gz"
   cd $ANSIBLE_DIRECTORY
   ansible-playbook playbook.yml \
     -e "ckb_download_url=$ckb_remote_url node=$1 ckb_download_tmp_dir=/tmp" \
