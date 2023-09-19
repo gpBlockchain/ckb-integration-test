@@ -13,8 +13,8 @@ QINIU_SECRET_KEY = os.environ.get("SECRET_KEY")
 QINIU_BUCKET_NAME = "acceptance-test"
 
 # Paths
-TAR_FILE_PATH = "job/benchmark-in-10h/ansible/logs/demo.tar.gz"
-TEMP_DIRECTORY = "job/benchmark-in-10h/temp"
+TAR_FILE_PATH = "job.bak/benchmark-in-10h/ansible/logs/demo.tar.gz"
+TEMP_DIRECTORY = "job.bak/benchmark-in-10h/temp"
 GRAFANA_BASE_URL = "https://grafana-monitor.nervos.tech/d/pThsj6xVz/test?orgId=1&var-url=18.163.87.248:8100&var-url=18.163.155.251:8100"
 GITHUB_LOGS_BASE_URL = "http://github-test-logs.ckbapp.dev/ckb/ckb-bench/reports"
 MD_PATH = "demo.md"
@@ -109,11 +109,11 @@ def json_to_key_value_md_table(json_data):
         # 遍历字典中的每个键值对，并将它们作为行添加到 Markdown 表格中
         for key, value in item.items():
             if str(value).startswith("http"):
-                md_table +=f"[链接]({value}) |"
+                md_table +=f"[link]({value}) |"
             else:
                 md_table += f"{value} |"
-        md_table +="\n |"
-    return md_table[:-1]
+        md_table +="\n |[Explanation of Terms]https://github.com/gpBlockchain/ckb-integration-test/tree/ckb-bench-server/ckb-bench-server#interpretation-of-test-results"
+    return md_table
 
 if __name__ == '__main__':
 
