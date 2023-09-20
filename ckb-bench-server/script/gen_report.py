@@ -115,7 +115,7 @@ def json_to_key_value_md_table(json_data):
         md_table +="\n |"
     md_table = md_table[:-1]
     md_table += " <hr/>\n"
-    md_table +="[Explanation of Terms](https://github.com/gpBlockchain/ckb-integration-test/tree/ckb-bench-server/ckb-bench-server#interpretation-of-test-results)"
+    md_table +="\n[Explanation of Terms](https://github.com/gpBlockchain/ckb-integration-test/tree/ckb-bench-server/ckb-bench-server#interpretation-of-test-results)"
     return md_table
 
 if __name__ == '__main__':
