@@ -15,8 +15,8 @@ jobs:
       - uses: actions/checkout@v3
       - name: Start
         run: |
-          bash ./ckb-bench-with-data/script/run.sh setup
-          bash ./ckb-bench-with-data/script/run.sh run
+          cd ./ckb-bench-with-data
+          bash run.sh
 
       - name: Set test state when benchmark success.
         if: ${{ success() }}

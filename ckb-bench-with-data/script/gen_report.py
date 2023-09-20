@@ -90,7 +90,8 @@ def json_to_key_value_md_table(json_data):
     # 检查输入是否为一个包含字典的 JSON 数组
     if not isinstance(json_data, list) or not all(isinstance(item, dict) for item in json_data):
         return "Invalid input. Please provide a JSON array of dictionaries."
-    md_table = "### ckb-bench-server \n\n"
+
+    md_table = "### ckb-bench-with-data \n\n"
     # 初始化 Markdown 表格头部
     md_table += "|"
 
@@ -159,7 +160,8 @@ if __name__ == '__main__':
             json_tmp_data['stat_report']['report'] = report_url
             json_data.append(json_tmp_data['stat_report'])
     # 生成 md 语法
-    sorted_values_desc = sorted(json_data, key=lambda x: x['n_inout'])
+
+    sorted_values_desc = sorted(json_data, key=lambda x: x['from_block_number'])
     md = json_to_key_value_md_table(sorted_values_desc)
     with open(MD_PATH, "w") as f:
         f.write(md)

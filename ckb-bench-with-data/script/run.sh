@@ -52,29 +52,39 @@ ansible_deploy_download_ckb() {
   if [ ${download_ckb_version} == "latest" ]; then
 
     # quake
-    ckb_remote_url="http://18.162.180.86:8000/ckb_v0.110.1_aarch64-unknown-linux-gnu.tar.gz"
+#    ckb_remote_url="http://18.162.180.86:8000/ckb_v0.110.1_aarch64-unknown-linux-gnu.tar.gz"
 # develop
-#    ckb_remote_url="http://18.162.180.86:8000/ckb_v0.111.0-rc10_x86_64-unknown-linux-gnu-portable.tar.gz"
+    ckb_remote_url="http://github-test-logs.ckbapp.dev/ckb/bin/ckb-develop-x86_64-unknown-linux-gnu-portable.tar.gz"
     ckb_data_remote_url=$2
     cd $ANSIBLE_DIRECTORY
+    ckb_download_tmp_dir="/tmp"
+    ansible-playbook playbook.yml \
+          -e "ckb_download_url=$ckb_remote_url node=$1" \
+          -e "ckb_download_tmp_dir=$ckb_download_tmp_dir" \
+          -t ckb_install
     ansible-playbook playbook.yml \
       -e "ckb_download_url=$ckb_remote_url node=$1" \
-      -t ckb_install,ckb_data_install,ckb_configure
+      -e "ckb_data_download_url=$ckb_data_remote_url" \
+      -t ckb_data_install,ckb_configure,ckb_restart
     return
   fi
 #  ckb_remote_url="https://github.com/nervosnetwork/ckb/releases/download/${download_ckb_version}/ckb_${download_ckb_version}_x86_64-unknown-centos-gnu.tar.gz"
   #quake
-  ckb_remote_url="http://18.162.180.86:8000/ckb_v0.110.1_aarch64-unknown-linux-gnu.tar.gz"
+  ckb_remote_url="http://github-test-logs.ckbapp.dev/ckb/bin/ckb-develop-x86_64-unknown-linux-gnu-portable.tar.gz"
 # develop
 #    ckb_remote_url="http://18.162.180.86:8000/ckb_v0.111.0-rc10_x86_64-unknown-linux-gnu-portable.tar.gz"
 
   ckb_data_remote_url=$2
+  ckb_download_tmp_dir="/tmp"
   cd $ANSIBLE_DIRECTORY
   ansible-playbook playbook.yml \
-    -e "ckb_download_url=$ckb_remote_url node=$1" \
-    -e "ckb_data_download_url=$ckb_data_remote_url" \
-    -t ckb_restart
-#    -t ckb_install,ckb_data_install,ckb_configure,ckb_restart
+            -e "ckb_download_url=$ckb_remote_url node=$1" \
+            -e "ckb_download_tmp_dir=$ckb_download_tmp_dir" \
+            -t ckb_install
+      ansible-playbook playbook.yml \
+        -e "ckb_download_url=$ckb_remote_url node=$1" \
+        -e "ckb_data_download_url=$ckb_data_remote_url" \
+        -t ckb_data_install,ckb_configure,ckb_restart
 }
 
 ### $1 : node1 ,node2 node3...
@@ -125,15 +135,26 @@ function ckb_set_network_active() {
       -t ckb_set_network_active
 }
 
+ansible_ckb_miner_start() {
+  ansible_config
+  cd $ANSIBLE_DIRECTORY
+  ansible-playbook playbook.yml \
+    -e "node=$1" \
+    -t ckb_miner_start
+}
+
+
 
 function ansible_wait_ckb_benchmark() {
     ansible_config
     cd $ANSIBLE_DIRECTORY
-    ckb_bench_log_file="logs/data-${1}.tar.gz"
     ansible-playbook playbook.yml -e 'hostname=bastions' -e 'node=bastions' -t ckb_benchmark_install
     ansible-playbook playbook.yml -e 'hostname=bastions' -e 'node=bastions' -t ckb_benchmark_miner_start
-    ansible-playbook playbook.yml -e 'hostname=bastions' -e 'node=bastions' -t ckb_benchmark_with_tps
-    ansible-playbook playbook.yml -e 'hostname=bastions' -e 'node=bastions' -e "ckb_bench_log_file=$ckb_bench_log_file" -t process_result
+    ansible-playbook playbook.yml -e 'hostname=bastions' -e 'node=bastions ckb_bench_tps=10' -t ckb_benchmark_with_tps
+    ansible-playbook playbook.yml -e 'hostname=bastions' -e 'node=bastions ckb_bench_tps=150' -t ckb_benchmark_with_tps
+    ansible_ckb_miner_start node2
+    ansible-playbook playbook.yml -e 'hostname=bastions' -e 'node=bastions ckb_bench_tps=2000' -t ckb_benchmark_with_tps
+    ansible-playbook playbook.yml -e 'hostname=bastions' -e 'node=bastions' -e "ckb_bench_log_file=demo.tar.gz" -t process_result
 }
 
 function ansible_process_result() {
@@ -156,14 +177,14 @@ function clean_ckb_bench_env(){
 main() {
   case $1 in
     "run")
-#      ansible_deploy_download_ckb node1 "http://172.31.45.113:8000/data.2000w.migration.tar.gz" &
-#      ansible_deploy_download_ckb node2 "http://172.31.45.113:8000/data.2000w.migration.tar.gz" &
-#      ansible_deploy_download_ckb node3 "http://172.31.45.113:8000/data.2000w.migration.tar.gz" &
-#      wait
-#      echo " deploy successful"
-#      sleep 20
-#      wait node start
-#      echo "link nodes "
+      ansible_deploy_download_ckb node1 "http://172.31.45.113:8000/data.1000w.tar.gz" &
+      ansible_deploy_download_ckb node2 "http://172.31.45.113:8000/data.1000w.tar.gz" &
+      ansible_deploy_download_ckb node3 "http://172.31.45.113:8000/data.1000w.tar.gz" &
+      wait
+      echo " deploy successful"
+      sleep 20
+      wait node start
+      echo "link nodes "
       link_node_p2p node1 node2
       link_node_p2p node1 node3
       link_node_p2p node2 node1
@@ -171,11 +192,13 @@ main() {
       link_node_p2p node3 node1
       link_node_p2p node3 node2
       echo "start bench "
-      ansible_wait_ckb_benchmark test-1000
+      ansible_wait_ckb_benchmark
 
 #      clean_ckb_env node1 &
 #      clean_ckb_env node2 &
 #      clean_ckb_env node3 &
+#      wait
+
 #      clean_ckb_bench_env &
 #      wait
 
@@ -198,9 +221,9 @@ main() {
       job_setup
       ;;
     "deploy_ckb")
-      ansible_deploy_download_ckb node1 "http://172.31.45.113:8000/data.2000w.migration.tar.gz" &
-      ansible_deploy_download_ckb node2 "http://172.31.45.113:8000/data.2000w.migration.tar.gz" &
-      ansible_deploy_download_ckb node3 "http://172.31.45.113:8000/data.2000w.migration.tar.gz" &
+      ansible_deploy_download_ckb node1 "http://172.31.45.113:8000/data.1000w.tar.gz" &
+      ansible_deploy_download_ckb node2 "http://172.31.45.113:8000/data.1000w.tar.gz" &
+      ansible_deploy_download_ckb node3 "http://172.31.45.113:8000/data.1000w.tar.gz" &
       wait
       echo "deploy successful"
       link_node_p2p node1 node2
@@ -239,7 +262,7 @@ main() {
       link_node_p2p node3 node2
       ;;
     "bench")
-      ansible_wait_ckb_benchmark 300
+      ansible_wait_ckb_benchmark
       ;;
     "get_log")
       ansible_process_result
