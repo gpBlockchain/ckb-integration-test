@@ -1,3 +1,4 @@
+pip install qiniu
 bash script/run.sh setup
 bash script/run.sh run
 bash script/run.sh clean_job
