@@ -112,6 +112,6 @@
         src: "{{ item.src }}"
         dest: "{{ item.dest }}"
       with_items:
-        - { src: "/var/lib/ckb-benchmark/data.tar.gz", dest: "logs/{{ ckb_bench_log_file }} " }
+        - { src: "/var/lib/ckb-benchmark/data.tar.gz", dest: "logs/{{ ckb_bench_log_file }}" }
       tags:
         - process_result
