@@ -130,22 +130,22 @@ if __name__ == '__main__':
         ckb_version = get_test_json_version(json_file)
 
         # 上传html文件
-        # upload_file_to_qiniu(
-        #     QINIU_ACCESS_KEY,
-        #     QINIU_SECRET_KEY,
-        #     QINIU_BUCKET_NAME,
-        #     f'ckb/ckb-bench/reports/{ckb_version}/{os.path.basename(json_file).replace("json", "html")}',
-        #     json_file.replace("json", "html")
-        # )
+        upload_file_to_qiniu(
+            QINIU_ACCESS_KEY,
+            QINIU_SECRET_KEY,
+            QINIU_BUCKET_NAME,
+            f'ckb/ckb-bench/reports/{ckb_version}/{os.path.basename(json_file).replace("json", "html")}',
+            json_file.replace("json", "html")
+        )
 
         # 上传json文件
-        # upload_file_to_qiniu(
-        #     QINIU_ACCESS_KEY,
-        #     QINIU_SECRET_KEY,
-        #     QINIU_BUCKET_NAME,
-        #     f'ckb/ckb-bench/reports/{ckb_version}/{os.path.basename(json_file)}',
-        #     json_file
-        # )
+        upload_file_to_qiniu(
+            QINIU_ACCESS_KEY,
+            QINIU_SECRET_KEY,
+            QINIU_BUCKET_NAME,
+            f'ckb/ckb-bench/reports/{ckb_version}/{os.path.basename(json_file)}',
+            json_file
+        )
 
         # 获取grafana 链接
         grafana_url = get_bench_timestamp_grafana(json_file)
