@@ -183,7 +183,7 @@ main() {
       wait
       echo " deploy successful"
       sleep 20
-      wait node start
+#      wait node start
       echo "link nodes "
       link_node_p2p node1 node2
       link_node_p2p node1 node3
