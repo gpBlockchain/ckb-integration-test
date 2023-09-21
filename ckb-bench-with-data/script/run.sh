@@ -259,7 +259,6 @@ main() {
       ansible_process_result
       ;;
     "restart_ckb")
-      set -x
       table_content="\n\n| block tip number | wait_restart_rpc_cost_time |\n| ----| --- |"
       curent_dir=`pwd`
       echo -e "$table_content" > $curent_dir/restart_cost_time.md
