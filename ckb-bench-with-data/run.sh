@@ -1,5 +1,8 @@
 pip install qiniu
 bash script/run.sh setup
+bash script/run.sh run 1000w
+bash script/run.sh restart_ckb 1000w
+bash script/run.sh clean_job
 bash script/run.sh run 2000w
 bash script/run.sh restart_ckb 2000w
 bash script/run.sh clean_job
