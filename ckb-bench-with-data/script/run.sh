@@ -229,9 +229,11 @@ main() {
       ansible_run_ckb node3
       ;;
    "clean_ckb_env")
-      clean_ckb_env node1
-      clean_ckb_env node2
-      clean_ckb_env node3
+      clean_ckb_env node1 &
+      clean_ckb_env node2 &
+      clean_ckb_env node3 &
+      wait
+      echo "clean ckb env"
       ;;
     "clean_ckb_bench")
       clean_ckb_bench_env
