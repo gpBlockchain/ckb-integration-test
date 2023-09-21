@@ -141,10 +141,12 @@ function main() {
             job_setup
             ;;
         "clean")
-            clean_ckb_env node1
-            clean_ckb_env node2
-            clean_ckb_env node3
-            clean_ckb_bench_env
+            clean_ckb_env node1 &
+            clean_ckb_env node2 &
+            clean_ckb_env node3 &
+            clean_ckb_bench_env &
+            wait
+            echo "clean finished"
             ;;
         esac
 }

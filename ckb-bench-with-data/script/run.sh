@@ -248,10 +248,12 @@ main() {
       clean_ckb_bench_env
       ;;
    "clean_job")
-      clean_ckb_env node1
-      clean_ckb_env node2
-      clean_ckb_env node3
-      clean_ckb_bench_env
+      clean_ckb_env node1 &
+      clean_ckb_env node2 &
+      clean_ckb_env node3 &
+      clean_ckb_bench_env &
+      wait
+      echo "clean finished"
       ;;
     "add_node")
       link_node_p2p node1 node2
