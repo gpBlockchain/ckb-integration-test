@@ -259,18 +259,19 @@ main() {
       ansible_process_result
       ;;
     "restart_ckb")
-      table_content="\n\n| block tip number | wait_restart_rpc_cost_time |\n| ----| --- |"
-      curent_dir=`pwd`
-      echo -e "$table_content" > $curent_dir/restart_cost_time.md
-      elapsed_time=`ansible_ckb_restart node2 | grep -o 'Wait For CKB RPC Service Launched Time: [0-9]\+ seconds' | awk '{print $(NF-1)}'`
-      echo -e "| $2 | ${elapsed_time}s|" >> $curent_dir/restart_cost_time.output
-      cat $curent_dir/restart_cost_time.output >> $curent_dir/restart_cost_time.md
-      echo ""  >> $curent_dir/restart_cost_time.md
-      echo ""  >> $curent_dir/restart_cost_time.md
-      echo "<hr/>"  >> $curent_dir/restart_cost_time.md
-      echo ""  >> $curent_dir/restart_cost_time.md
-      echo "[Explanation of Terms](https://github.com/gpBlockchain/ckb-integration-test/tree/ckb-bench-with-data/ckb-bench-with-data#interpretation-of-test-results)" >> $curent_dir/restart_cost_time.md
-      echo "finished"
+          current_dir=`pwd`
+          table_file="${current_dir}/restart_cost_time.md"
+          output_file="${current_dir}/restart_cost_time.output"
+          table_content="\n\n| block tip number | wait_restart_rpc_cost_time |\n| ----| --- |"
+
+          # Ensure the files are created or cleared
+          echo -e "$table_content" > "$table_file"
+          elapsed_time=`ansible_ckb_restart node2 | grep -o 'Wait For CKB RPC Service Launched Time: [0-9]\+ seconds' | awk '{print $(NF-1)}'`
+          echo -e "| $2 | ${elapsed_time}s|" >> "$output_file"
+
+          cat "$output_file" >> "$table_file"
+          echo -e "\n\n<hr/>\n\n[Explanation of Terms](https://github.com/gpBlockchain/ckb-integration-test/tree/ckb-bench-with-data/ckb-bench-with-data#interpretation-of-test-results)" >> "$table_file"
+          echo "finished"
       ;;
     esac
 }
