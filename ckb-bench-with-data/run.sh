@@ -10,4 +10,4 @@ python script/gen_report.py
 report=`cat demo.md`
 report+=`cat restart_cost_time.md`
 export GITHUB_TOKEN=${GITHUB_TOKEN}
-bash script/ok.sh add_comment nervosnetwork/ckb-integration-test 116 "$report"
+bash script/ok.sh add_comment nervosnetwork/ckb 2372 "$report"
