@@ -5,7 +5,7 @@ set -euo pipefail
 set -euo pipefail
 START_TIME=${START_TIME:-"$(date +%Y-%m-%d' '%H:%M:%S.%6N)"}
 #  latest or v0.110.0 ...
-download_ckb_version="v0.111.0-rc10"
+
 
 JOB_ID="benchmark-in-10h"
 SCRIPT_PATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
@@ -14,6 +14,9 @@ ANSIBLE_DIRECTORY=$JOB_DIRECTORY/ansible
 ANSIBLE_INVENTORY=$JOB_DIRECTORY/ansible/inventory.yml
 SSH_PRIVATE_KEY_PATH=$JOB_DIRECTORY/ssh/id
 SSH_PUBLIC_KEY_PATH=$JOB_DIRECTORY/ssh/id.pub
+if [ -z "$CKB_REMOTE_URL" ]; then
+    CKB_REMOTE_URL="http://github-test-logs.ckbapp.dev/ckb/bin/ckb-develop-x86_64-unknown-linux-gnu-portable.tar.gz"
+fi
 
 
 function job_setup() {
@@ -73,18 +76,9 @@ function ansible_setup() {
 
 ansible_deploy_download_ckb() {
   ansible_config
-  if [ ${download_ckb_version} == "latest" ]; then
-    ckb_remote_url="http://github-test-logs.ckbapp.dev/ckb/bin/ckb-develop-x86_64-unknown-linux-gnu-portable.tar.gz"
-    cd $ANSIBLE_DIRECTORY
-    ansible-playbook playbook.yml \
-      -e "ckb_download_url=$ckb_remote_url node=$1" \
-      -t ckb_install,ckb_data_install,ckb_configure
-    return
-  fi
-  ckb_remote_url="http://github-test-logs.ckbapp.dev/ckb/bin/ckb-develop-x86_64-unknown-linux-gnu-portable.tar.gz"
   cd $ANSIBLE_DIRECTORY
   ansible-playbook playbook.yml \
-    -e "ckb_download_url=$ckb_remote_url node=$1 ckb_download_tmp_dir=/tmp" \
+    -e "ckb_download_url=$CKB_REMOTE_URL node=$1 ckb_download_tmp_dir=/tmp" \
     -t ckb_install,ckb_configure,ckb_restart
 }
 
@@ -124,6 +118,9 @@ function ansible_wait_ckb_benchmark() {
 
 function main() {
     case $1 in
+        "run_build")
+          rust
+          ;;
         "run")
             ansible_deploy_download_ckb node2
             ansible_deploy_download_ckb node1
