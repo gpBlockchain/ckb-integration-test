@@ -20,6 +20,8 @@ jobs:
       CKB_REMOTE_URL: ${{ github.event.inputs.ckb_remote_url }}
     steps:
       - uses: actions/checkout@v3
+        with:
+          ref: ckb-bench-with-data
       - name: Start
         run: |
           cd ckb-bench-server
