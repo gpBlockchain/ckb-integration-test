@@ -40,6 +40,6 @@ jobs:
           name: jfoa-build-reports-${{ runner.os }}
           path: ckb-bench-server/job/benchmark-in-10h/ansible/logs
       - name: Clean Up
-        if: ${{ steps.UpdateCkb.outputs.GITHUB_RUN_STATE == '1' }}
+        if: always()
         run: |
           bash /home/runner/work/ckb-integration-test/ckb-integration-test/ckb-bench-server/script/benchmark.sh clean
