@@ -1,8 +1,8 @@
 name: bench-ckb-bench-server
 
 on:
-  # schedule:
-    # - cron: '0 5 * * *' # 在北京时间每天的12点触发
+  schedule:
+    - cron: '0 5 * * *' # 在北京时间每天的12点触发
   workflow_dispatch:
     inputs:
       ckb_remote_url:
