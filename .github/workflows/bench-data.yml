@@ -2,6 +2,11 @@ name: Benchmark
 
 on:
   workflow_dispatch:
+    inputs:
+      ckb_remote_url:
+        description: 'ckb_remote_url'
+        required: false
+        default: 'http://github-test-logs.ckbapp.dev/ckb/bin/ckb-develop-x86_64-unknown-linux-gnu-portable.tar.gz'
 
 jobs:
 
@@ -30,7 +35,7 @@ jobs:
       # - name: Setup upterm session
       #   if: ${{ failure() }}
       #   uses: lhotari/action-upterm@v1
-        
+
       - name: Publish reports
         if: always()
         uses: actions/upload-artifact@v2

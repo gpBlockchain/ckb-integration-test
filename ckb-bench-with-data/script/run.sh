@@ -4,7 +4,6 @@
 set -euo pipefail
 START_TIME=${START_TIME:-"$(date +%Y-%m-%d' '%H:%M:%S.%6N)"}
 #  latest or v0.110.0 ...
-download_ckb_version="v0.111.0-rc10"
 
 JOB_ID="benchmark-in-10h"
 SCRIPT_PATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
@@ -13,6 +12,9 @@ ANSIBLE_DIRECTORY=$JOB_DIRECTORY/ansible
 ANSIBLE_INVENTORY=$JOB_DIRECTORY/ansible/inventory.yml
 SSH_PRIVATE_KEY_PATH=$JOB_DIRECTORY/ssh/id
 SSH_PUBLIC_KEY_PATH=$JOB_DIRECTORY/ssh/id.pub
+if [ -z "$CKB_REMOTE_URL" ]; then
+    CKB_REMOTE_URL="http://github-test-logs.ckbapp.dev/ckb/bin/ckb-develop-x86_64-unknown-linux-gnu-portable.tar.gz"
+fi
 
 function job_setup() {
     mkdir -p $JOB_DIRECTORY
@@ -49,40 +51,15 @@ function ansible_setup() {
 ansible_deploy_download_ckb() {
   ansible_config
 
-  if [ ${download_ckb_version} == "latest" ]; then
-
-    # quake
-#    ckb_remote_url="http://18.162.180.86:8000/ckb_v0.110.1_aarch64-unknown-linux-gnu.tar.gz"
-# develop
-    ckb_remote_url="http://github-test-logs.ckbapp.dev/ckb/bin/ckb-develop-x86_64-unknown-linux-gnu-portable.tar.gz"
-    ckb_data_remote_url=$2
-    cd $ANSIBLE_DIRECTORY
-    ckb_download_tmp_dir="/tmp"
-    ansible-playbook playbook.yml \
-          -e "ckb_download_url=$ckb_remote_url node=$1" \
-          -e "ckb_download_tmp_dir=$ckb_download_tmp_dir" \
-          -t ckb_install
-    ansible-playbook playbook.yml \
-      -e "ckb_download_url=$ckb_remote_url node=$1" \
-      -e "ckb_data_download_url=$ckb_data_remote_url" \
-      -t ckb_data_install,ckb_configure,ckb_restart
-    return
-  fi
-#  ckb_remote_url="https://github.com/nervosnetwork/ckb/releases/download/${download_ckb_version}/ckb_${download_ckb_version}_x86_64-unknown-centos-gnu.tar.gz"
-  #quake
-  ckb_remote_url="http://github-test-logs.ckbapp.dev/ckb/bin/ckb-develop-x86_64-unknown-linux-gnu-portable.tar.gz"
-# develop
-#    ckb_remote_url="http://18.162.180.86:8000/ckb_v0.111.0-rc10_x86_64-unknown-linux-gnu-portable.tar.gz"
-
   ckb_data_remote_url=$2
   ckb_download_tmp_dir="/tmp"
   cd $ANSIBLE_DIRECTORY
   ansible-playbook playbook.yml \
-            -e "ckb_download_url=$ckb_remote_url node=$1" \
+            -e "ckb_download_url=$CKB_REMOTE_URL node=$1" \
             -e "ckb_download_tmp_dir=$ckb_download_tmp_dir" \
             -t ckb_install
       ansible-playbook playbook.yml \
-        -e "ckb_download_url=$ckb_remote_url node=$1" \
+        -e "ckb_download_url=$CKB_REMOTE_URL node=$1" \
         -e "ckb_data_download_url=$ckb_data_remote_url" \
         -t ckb_data_install,ckb_configure,ckb_restart
 }
