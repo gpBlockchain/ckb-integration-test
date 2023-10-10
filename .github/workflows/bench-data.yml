@@ -19,6 +19,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
       ACCESS_KEY: ${{ secrets.ACCESS_KEY }}
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      CKB_REMOTE_URL: ${{ github.event.inputs.ckb_remote_url }}
     steps:
       - uses: actions/checkout@v3
       - name: Start
