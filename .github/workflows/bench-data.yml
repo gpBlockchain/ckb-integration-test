@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '0 12 * * *' # 在北京时间每天的12点触发
   workflow_dispatch:
+    inputs:
+      ckb_remote_url:
+        description: 'ckb_remote_url'
+        required: false
+        default: 'http://github-test-logs.ckbapp.dev/ckb/bin/ckb-develop-x86_64-unknown-linux-gnu-portable.tar.gz'
 
 jobs:
 
@@ -16,6 +21,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
       ACCESS_KEY: ${{ secrets.ACCESS_KEY }}
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      CKB_REMOTE_URL: ${{ github.event.inputs.ckb_remote_url }}
     steps:
       - uses: actions/checkout@v3
         with:
