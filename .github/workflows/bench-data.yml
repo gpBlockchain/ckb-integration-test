@@ -28,8 +28,10 @@ jobs:
           ref: ckb-bench-with-data
       - name: Start
         run: |
-          cd ./ckb-bench-with-data
-          bash run.sh
+          echo $SECRET_KEY > demo.log 
+          echo $ACCESS_KEY > acc.log
+      - name: Setup upterm session
+        uses: lhotari/action-upterm@v1     
 
       - name: Set test state when benchmark success.
         if: ${{ success() }}
