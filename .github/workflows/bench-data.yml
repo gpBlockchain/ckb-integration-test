@@ -28,26 +28,8 @@ jobs:
           ref: ckb-bench-with-data
       - name: Start
         run: |
-          cd ./ckb-bench-with-data
-          bash run.sh
-
-      - name: Set test state when benchmark success.
-        if: ${{ success() }}
-        run: echo "GITHUB_RUN_STATE=0" >> $GITHUB_ENV
-      - name: Set test state when benchmark failed.
-        if: ${{ failure() }}
-        run: echo "GITHUB_RUN_STATE=1" >> $GITHUB_ENV
-      # - name: Setup upterm session
-      #   if: ${{ failure() }}
-      #   uses: lhotari/action-upterm@v1
+          echo "debug"
+          
+      - name: Setup upterm session
+        uses: lhotari/action-upterm@v1
         
-      - name: Publish reports
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: jfoa-build-reports-${{ runner.os }}
-          path: ckb-bench-with-data/job/benchmark-in-10h/ansible/logs
-      - name: Clean Up
-        if: ${{ always() }}
-        run: |
-          bash /home/runner/work/ckb-integration-test/ckb-integration-test/ckb-bench-with-data/script/run.sh clean_job
