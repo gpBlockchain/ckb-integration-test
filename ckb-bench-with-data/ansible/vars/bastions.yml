@@ -1,4 +1,4 @@
-ckb_urls: [ "http://172.31.37.178:8010,http://172.31.45.100:8011,http://172.31.36.9:8012" ]
+ckb_urls: [ "http://172.31.37.178:8020,http://172.31.45.100:8021,http://172.31.36.9:8022" ]
 ckb_mining_interval_ms: 8000
 
 # {{ ckb_benchmark_workspace }}/ckb-bench bench \
@@ -9,7 +9,7 @@ ckb_mining_interval_ms: 8000
 #          --bench-time-ms       {{ ckb_bench_time_ms }} \
 #          --concurrent-requests {{ ckb_bench_concurrent_requests }} \
 
-ckb_benchmark_url: "http://172.31.37.178:8010"
+ckb_benchmark_url: "http://172.31.37.178:8020"
 ckb_benchmark_n_users: 10000
 ckb_benchmark_owner_privkey: "98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946"
 ckb_bench_n_inout: 1
