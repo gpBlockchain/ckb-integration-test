@@ -2,17 +2,17 @@ all:
   hosts:
     node1:
       ansible_user: ckb
-      ansible_host: 18.166.86.54
+      ansible_host: 172.31.37.178
       internal_ip: 172.31.37.178
     node2:
       ansible_user: ckb
-      ansible_host: 18.163.87.248
+      ansible_host: 172.31.45.100
       internal_ip: 172.31.45.100
     node3:
       ansible_user: ckb
-      ansible_host: 18.163.155.251
+      ansible_host: 172.31.36.9
       internal_ip: 172.31.36.9
     bastions:
       ansible_user: ckb
-      ansible_host: 18.162.235.225
+      ansible_host: 172.31.35.87
       internal_ip: 172.31.35.87
