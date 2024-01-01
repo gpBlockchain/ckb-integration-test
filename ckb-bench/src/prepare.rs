@@ -82,7 +82,7 @@ pub fn dispatch(
         if change_capacity >= Capacity::bytes(67).unwrap().as_u64() {
             let change_output = CellOutput::new_builder()
                 .capacity(change_capacity.pack())
-                .lock(owner.single_secp256k1_lock_script_via_data())
+                .lock(owner.single_secp256k1_lock_script_via_type())
                 .build();
             outputs.push(change_output);
         }
@@ -90,7 +90,7 @@ pub fn dispatch(
             let user = &users[index_user(i)];
             let cell_output = CellOutput::new_builder()
                 .capacity(capacity_per_cell.pack())
-                .lock(user.single_secp256k1_lock_script_via_data())
+                .lock(user.single_secp256k1_lock_script_via_type    ())
                 .build();
             outputs.push(cell_output);
         }
@@ -395,6 +395,7 @@ pub fn derive_privkeys(basic_raw_privkey: Byte32, n: usize) -> Vec<Privkey> {
         raw_privkeys.push(next_raw_privkey);
         raw_privkeys
     });
+    crate::debug!("raw_privkeys:{:?}",(raw_privkeys));
     raw_privkeys = raw_privkeys.split_off(1);
     raw_privkeys
         .iter()

@@ -15,7 +15,7 @@ use ckb_types::core::{TransactionBuilder, TransactionView};
 use ckb_sdk::rpc::ckb_indexer::Cell;
 use ckb_types::core::EpochNumberWithFraction;
 use ckb_types::H256;
-use ckb_types::packed::{Byte32, ScriptOpt, OutPoint as OutPointByte, CellDep, CellInput, CellOutput, Script};
+use ckb_types::packed::{Byte32, ScriptOpt, OutPoint as OutPointByte, CellDep, CellInput, CellOutput, Script, WitnessArgs};
 use ckb_types::prelude::{Builder, Entity, Pack};
 use ckb_bench::util::since_from_absolute_epoch_number_with_fraction;
 use crate::node::Node;
@@ -23,6 +23,7 @@ use crate::user::User;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::time::{UNIX_EPOCH};
+use bytes::Bytes;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RunReport {
@@ -124,6 +125,7 @@ pub struct AddTxParam {
     pub deps: Vec<CellDepJson>,
     pub _type: ScriptJson,
     pub output_data: JsonBytes,
+    pub witness: JsonBytes,
     pub min_fee: u64,
     pub max_fee: u64,
 }
@@ -140,6 +142,7 @@ impl AddTxParam {
             deps: vec![],
             _type: ScriptJson::default(),
             output_data: Default::default(),
+            witness: Default::default(),
             min_fee: 1000,
             max_fee: 1000,
         }
@@ -156,6 +159,14 @@ impl AddTxParam {
         }
         updated_vec
     }
+
+    pub fn get_contract_capacity(&mut self) -> u64 {
+        if self.get_script_obj() == ScriptOpt::default() {
+            return 0;
+        }
+        return ((self.get_script_obj().as_bytes().len() + self.output_data.len() + 64) * 100000000) as u64;
+    }
+
     pub fn get_script_obj(&mut self) -> ScriptOpt {
         // if self._type
         if self._type.code_hash == H256::default() {
@@ -167,6 +178,13 @@ impl AddTxParam {
                 .hash_type(ckb_types::core::ScriptHashType::from(self._type.hash_type.clone()).into())
                 .build()).pack()
         }
+    }
+
+    pub fn get_witness(&mut self) -> WitnessArgs {
+        if self.witness == JsonBytes::default() {
+            return WitnessArgs::default();
+        }
+        return WitnessArgs::from_slice(self.witness.as_bytes()).unwrap();
     }
 
     pub fn get_fee(&mut self) -> u64 {
@@ -299,7 +317,7 @@ impl TransactionProducer {
                             .build()
                     })
                     .collect::<Vec<_>>();
-                let outputs = live_cells
+                let mut outputs = live_cells
                     .values()
                     .map(|cell| {
                         // use tx_index as random number
@@ -309,27 +327,31 @@ impl TransactionProducer {
                         let user = self.users.get(&lock_hash).expect("should be ok");
                         match tx_index % 3 {
                             0 => CellOutput::new_builder()
-                                .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
+                                .capacity((cell.output.capacity.value() - (self.add_tx_param.get_fee() + self.add_tx_param.get_contract_capacity())).pack())
                                 .lock(user.single_secp256k1_lock_script_via_data())
-                                .type_(self.add_tx_param.get_script_obj())
+                                .type_(ScriptOpt::default())
+                                // .type_(self.add_tx_param.get_script_obj())
                                 .build(),
                             1 => CellOutput::new_builder()
-                                .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
+                                .capacity((cell.output.capacity.value() - (self.add_tx_param.get_fee() + self.add_tx_param.get_contract_capacity())).pack())
                                 .lock(user.single_secp256k1_lock_script_via_type())
-                                .type_(self.add_tx_param.get_script_obj())
+                                .type_(ScriptOpt::default())
+                                // .type_(self.add_tx_param.get_script_obj())
                                 .build(),
                             2 => {
                                 if enabled_data1_script {
                                     CellOutput::new_builder()
-                                        .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
+                                        .capacity((cell.output.capacity.value() - (self.add_tx_param.get_fee() + self.add_tx_param.get_contract_capacity())).pack())
                                         .lock(user.single_secp256k1_lock_script_via_data1())
-                                        .type_(self.add_tx_param.get_script_obj())
+                                        .type_(ScriptOpt::default())
+                                        // .type_(self.add_tx_param.get_script_obj())
                                         .build()
                                 } else {
                                     CellOutput::new_builder()
-                                        .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
+                                        .capacity((cell.output.capacity.value() - (self.add_tx_param.get_fee() + self.add_tx_param.get_contract_capacity())).pack())
                                         .lock(user.single_secp256k1_lock_script_via_data())
-                                        .type_(self.add_tx_param.get_script_obj())
+                                        .type_(ScriptOpt::default())
+                                        // .type_(self.add_tx_param.get_script_obj())
                                         .build()
                                 }
                             }
@@ -337,7 +359,51 @@ impl TransactionProducer {
                         }
                     })
                     .collect::<Vec<_>>();
-                let outputs_data = live_cells.values().map(|_| self.add_tx_param.get_output_data());
+
+                if self.add_tx_param.get_contract_capacity() != 0 {
+                    live_cells.values().for_each(|cell| {
+                        // use tx_index as random number
+
+                        let lock_hash = ckb_types::packed::Script::from(cell.output.lock.clone()).calc_script_hash();
+                        let tx_index = cell.tx_index.value();
+                        let user = self.users.get(&lock_hash).expect("should be ok");
+
+                        let contract_output = match tx_index % 3 {
+                            0 => CellOutput::new_builder()
+                                .capacity(self.add_tx_param.get_contract_capacity().pack())
+                                .lock(user.single_secp256k1_lock_script_via_data())
+                                .type_(self.add_tx_param.get_script_obj())
+                                .build(),
+                            1 => CellOutput::new_builder()
+                                .capacity(self.add_tx_param.get_contract_capacity().pack())
+                                .lock(user.single_secp256k1_lock_script_via_type())
+                                .type_(self.add_tx_param.get_script_obj())
+                                .build(),
+                            2 => {
+                                if enabled_data1_script {
+                                    CellOutput::new_builder()
+                                        .capacity(self.add_tx_param.get_contract_capacity().pack())
+                                        .lock(user.single_secp256k1_lock_script_via_data1())
+                                        .type_(self.add_tx_param.get_script_obj())
+                                        .build()
+                                } else {
+                                    CellOutput::new_builder()
+                                        .capacity(self.add_tx_param.get_contract_capacity().pack())
+                                        .lock(user.single_secp256k1_lock_script_via_data())
+                                        .type_(self.add_tx_param.get_script_obj())
+                                        .build()
+                                }
+                            }
+                            _ => unreachable!(),
+                        };
+                        outputs.insert(0, contract_output);
+                        return;
+                    })
+                }
+                let mut outputs_data = Vec::new();
+                for _ in &outputs {
+                    outputs_data.push(self.add_tx_param.get_output_data());
+                }
                 let raw_tx = TransactionBuilder::default()
                     .inputs(inputs)
                     .outputs(outputs)
@@ -346,15 +412,19 @@ impl TransactionProducer {
                     .build();
                 // NOTE: We know the transaction's inputs and outputs are paired by index, so this
                 // signed way is okay.
-                let witnesses = live_cells.values().map(|cell| {
+                let mut witnesses = live_cells.values().map(|cell| {
                     let lock_hash = ckb_types::packed::Script::from(cell.output.lock.clone()).calc_script_hash();
                     let user = self.users.get(&lock_hash).expect("should be ok");
-                    user.single_secp256k1_signed_witness(&raw_tx)
-                        .as_bytes()
-                        .pack()
-                });
+                    if self.add_tx_param.witness != JsonBytes::default() {
+                        return user.single_secp256k1_signed_witness_with_witness_args(&raw_tx, self.add_tx_param.get_witness())
+                            .as_bytes().pack();
+                    }
+                    return user.single_secp256k1_signed_witness(&raw_tx)
+                        .as_bytes().pack();
+                }).collect::<Vec<_>>();
+
                 let signed_tx = raw_tx.as_advanced_builder().witnesses(witnesses).build();
-                crate::debug!("signed tx:{:?}",signed_tx.to_string());
+                crate::debug!("signed tx:{:?}",  signed_tx.to_string());
                 if transaction_sender.send(TransactionView::from(signed_tx)).is_err() {
                     // SendError occurs, the corresponding transaction receiver is dead
                     return;

@@ -14,6 +14,7 @@ mod prometheus;
 mod tests;
 mod rpc;
 
+use std::any::Any;
 use std::fs::File;
 use std::io::{Read};
 use tokio::runtime::Runtime;
@@ -31,8 +32,8 @@ use std::str::FromStr;
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
 use ckb_types::H256;
-use ckb_types::packed::{Byte32};
-use ckb_types::prelude::{Entity};
+use ckb_types::packed::{Byte32, ScriptOpt, WitnessArgs, WitnessArgsBuilder};
+use ckb_types::prelude::{Builder, Entity};
 use url::Url;
 use crate::nodes::Nodes;
 use crate::user::User;
@@ -138,16 +139,16 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let nodes = rpc_urls
                 .iter()
                 .map(|url| {
-                    let port = url.port().unwrap();
-                    let host = url.host_str().unwrap();
-                    let node_data_dir = data_dir.join(&format!("{}:{}", host, port));
-                    ::std::fs::create_dir_all(&node_data_dir).unwrap_or_else(|err| {
-                        panic!(
-                            "failed to create dir \"{}\", error: {}",
-                            node_data_dir.display(),
-                            err
-                        )
-                    });
+                    // let port = url.port().unwrap();
+                    // let host = url.host_str().unwrap();
+                    // let node_data_dir = data_dir.join(&format!("{}:{}", host, port));
+                    // ::std::fs::create_dir_all(&node_data_dir).unwrap_or_else(|err| {
+                    //     panic!(
+                    //         "failed to create dir \"{}\", error: {}",
+                    //         node_data_dir.display(),
+                    //         err
+                    //     )
+                    // });
 
                     Node::init(url.as_str(), url.as_str())
                 })

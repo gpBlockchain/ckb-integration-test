@@ -81,10 +81,3 @@ impl MemoryUsageClient {
     }
 }
 
-
-#[test]
-fn test1() {
-    let client = MemoryUsageClient::new("http://18.162.180.86:8100".into());
-    let ret = client.get_memory_usage(Duration::from_secs(3).as_secs(), Duration::from_secs(10));
-    println!("{:?}", ret)
-}

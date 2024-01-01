@@ -78,7 +78,34 @@ impl User {
         }
     }
 
-
+    pub fn single_secp256k1_signed_witness_with_witness_args(&self,tx: &TransactionView,witness:WitnessArgs) -> WitnessArgs{
+        if let Some(ref privkey) = self.single_secp256k1_privkey {
+            let tx_hash = tx.hash();
+            let mut blake2b = ckb_hash::new_blake2b();
+            let mut message = [0u8; 32];
+            blake2b.update(&tx_hash.raw_data());
+            let witness_for_digest = WitnessArgs::new_builder()
+                .lock(Some(Bytes::from(vec![0u8; 65])).pack())
+                .input_type(witness.input_type())
+                .output_type(witness.output_type())
+                .build();
+            let witness_len = witness_for_digest.as_bytes().len() as u64;
+            blake2b.update(&witness_len.to_le_bytes());
+            blake2b.update(&witness_for_digest.as_bytes());
+            blake2b.finalize(&mut message);
+            let message = Message::from(message);
+            let sig = privkey.sign_recoverable(&message).expect("sign");
+            WitnessArgs::new_builder()
+                .lock(Some(Bytes::from(sig.serialize())).pack())
+                .input_type(witness.input_type())
+                .output_type(witness.output_type())
+                .build()
+            // .as_bytes()
+            // .pack()
+        } else {
+            unreachable!("single_secp256k1 unset")
+        }
+    }
 
     pub fn single_secp256k1_signed_witness(&self, tx: &TransactionView) -> WitnessArgs {
         if let Some(ref privkey) = self.single_secp256k1_privkey {
@@ -93,7 +120,7 @@ impl User {
             blake2b.update(&witness_len.to_le_bytes());
             blake2b.update(&witness_for_digest.as_bytes());
             blake2b.finalize(&mut message);
-            let message = H256::from(message);
+            let message = Message::from(message);
             let sig = privkey.sign_recoverable(&message).expect("sign");
             WitnessArgs::new_builder()
                 .lock(Some(Bytes::from(sig.serialize())).pack())
@@ -114,21 +141,26 @@ impl User {
     }
 
     pub fn get_spendable_single_secp256k1_cells(&self, node: &Node) -> Vec<Cell> {
-        let mut live_out_points = Vec::new();
-
+        let mut live_out_points= Vec::new();
         live_out_points.extend(
             node.get_cells_by_script(self.single_secp256k1_lock_script_via_type())
-                .expect("indexer get_live_cells_by_lock_script").objects
+                .expect("indexer get_live_cells_by_lock_script").objects.into_iter().filter(|cell|{
+                  cell.output.type_.is_none()
+            })
         );
         live_out_points.extend(
             node
                 .get_cells_by_script(self.single_secp256k1_lock_script_via_data())
-                .expect("indexer get_live_cells_by_lock_script").objects
+                .expect("indexer get_live_cells_by_lock_script").objects.into_iter().filter(|cell|{
+                cell.output.type_.is_none()
+            })
         );
         live_out_points.extend(
             node
                 .get_cells_by_script(self.single_secp256k1_lock_script_via_data1())
-                .expect("indexer get_live_cells_by_lock_script").objects
+                .expect("indexer get_live_cells_by_lock_script").objects.into_iter().filter(|cell|{
+                cell.output.type_.is_none()
+            })
         );
 
         // let tip_number = node.rpc_client().get_tip_block_number().unwrap();

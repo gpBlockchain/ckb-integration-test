@@ -77,7 +77,7 @@ interval = 3
 
 File format : contract.json 
 ```json
-{"deps":[{"dep_type":"code","out_point":{"tx_hash":"0xdd71f517ef4cd619f656d3e83d2000bf2f14ebdb0d786e019310acaa9c431c69","index":"0x0"}}],"_type":{"code_hash":"0x4a27458674f2e96f84b727f89bd7dab18dbfb74265d5977f215324715570b36b","hash_type":"data1","args":"0x02"},"output_data":"0x005a6202000000000000000000000000","min_fee":1000,"max_fee":1000}
+{"deps":[{"dep_type":"code","out_point":{"tx_hash":"0xbf6fb538763efec2a70a6a3dcb7242787087e1030c4e7d86585bc63a9d337f5f","index":"0x0"}},{"dep_type":"code","out_point":{"tx_hash":"0x9101c1db97bc2013ace8ebd0718723be3d0e3748f2ef22bd7f1dbda0ca75d7d0","index":"0x0"}},{"dep_type":"code","out_point":{"tx_hash":"0x5eed05d2aaa27a3613c39afbdcc59499f806068f16dcc88a0e8c53827e9cc76d","index":"0x0"}}],"_type":{"code_hash":"0x25c29dc317811a6f6f3985a7a9ebc4838bd388d19d0feeecf0bcd60f6c0975bb","hash_type":"type","args":"0x8e0d0da73866325793849e460ac8c42ccae37c9f261455803bf60a042d96de21"},"output_data":"0x00e87648170000000000000000000000","min_fee":1000,"max_fee":1000,"witness":"0x810000001000000010000000100000006d0000006d00000014000000690000006900000069000000550000001000000030000000310000003a241ceceede72a5f55c8fb985652690f09a517d6c9070f0df0d3572fa03fb700120000000472b408481f73208bc9765840f2fc3c116c76aa15f1dc2e3f6bdf314cd55517c04000000"}
 ```
 Ckb-bench continuously performs these tasks for `bench-time-ms` duration:
   - collects unspent cells of derived users
