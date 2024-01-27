@@ -134,6 +134,18 @@ function main() {
             link_node_p2p node3 node2
             ansible_wait_ckb_benchmark
             ;;
+        "deploy")
+            ansible_deploy_download_ckb node2
+            ansible_deploy_download_ckb node1
+            ansible_deploy_download_ckb node3
+            ansible_ckb_miner_start node2
+            link_node_p2p node2 node1
+            link_node_p2p node2 node3
+            link_node_p2p node1 node2
+            link_node_p2p node1 node3
+            link_node_p2p node3 node1
+            link_node_p2p node3 node2
+            ;;
         "setup")
             job_setup
             ;;
