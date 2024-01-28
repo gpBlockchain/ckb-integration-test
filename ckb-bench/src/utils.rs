@@ -36,7 +36,7 @@ pub fn maybe_retry_send_transaction(node: &Node, tx: &TransactionView) -> Result
 pub async fn maybe_retry_send_transaction_async(node: &Node, tx: &TransactionView) -> Result<bool, String> {
     let mut last_logging_time = Instant::now();
     loop {
-        // let mut begin = Instant::now();
+        // let mut begin = Instant::nockb-bench/src/rpc/v2021.rsw();
         let result = poll_fn(|_| {
             std::task::Poll::Ready(node.async_client().send_transaction_result(tx.data().into()))
         }).await;
