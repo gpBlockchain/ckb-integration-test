@@ -56,7 +56,7 @@ impl RpcClient {
     pub fn send_transaction_result(&self, tx: Transaction) -> Result<Byte32, AnyError> {
             let ret = self
                 .inner2021
-                .send_transaction(tx, Some("passthrough".to_string()));
+                .send_test_transaction(tx, Some("passthrough".to_string()));
             // NOTE: The CKB-VM executes large-cycle transaction scripts
             // asynchronously using pause-resume approach. While the current
             // implementation has a bug: when sending a transaction embed with
