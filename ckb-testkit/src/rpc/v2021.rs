@@ -44,6 +44,7 @@ jsonrpc!(pub struct Inner2021 {
     pub fn get_block_median_time(&self, block_hash: H256) -> Option<Timestamp>;
     pub fn dry_run_transaction(&self, _tx: Transaction) -> DryRunResult;
     pub fn send_transaction(&self, tx: Transaction, outputs_validator: Option<String>) -> H256;
+    pub fn send_test_transaction(&self, tx: Transaction, outputs_validator: Option<String>) -> H256;
     pub fn tx_pool_info(&self) -> TxPoolInfo;
 
     pub fn send_alert(&self, alert: Alert) -> ();
