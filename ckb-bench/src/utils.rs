@@ -49,7 +49,7 @@ pub async fn maybe_retry_send_transaction_async(node: &Node, tx: &TransactionVie
                     async_sleep(Duration::from_millis(10)).await;
                     if last_logging_time.elapsed() >= Duration::from_secs(5) {
                         last_logging_time = Instant::now();
-                        crate::debug!(
+                        crate::error!(
                             "retry to send tx {:#x} as the pool is full",
                             tx.hash()
                         );
