@@ -67,16 +67,7 @@ impl RpcClient {
             //
             // This if-statement is a workaround to make sure the script
             // execution finished.
-            if let Ok(ref hash) = ret {
-                let start_time = Instant::now();
-                while start_time.elapsed() <= Duration::from_secs(20) {
-                    if let Some(txstatus) = self.inner2021.get_transaction(hash.clone()).unwrap() {
-                        if txstatus.tx_status.status != ckb_jsonrpc_types::Status::Unknown {
-                            break;
-                        }
-                    }
-                }
-            }
+            if let Ok(ref hash) = ret {}
             ret.map(|h256| h256.pack())
     }
 }
