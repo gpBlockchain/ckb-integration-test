@@ -48,7 +48,13 @@ function clean_ckb_bench_env(){
     -t ckb_bench_stop,ckb_bench_clean
 }
 
-
+ansible_ckb_restart() {
+  ansible_config
+  cd $ANSIBLE_DIRECTORY
+  ansible-playbook playbook.yml \
+    -e "ckb_download_url=$CKB_REMOTE_URL node=$1 ckb_download_tmp_dir=/tmp" \
+    -t ckb_restart
+}
 
 
 function ssh_gen_key() {
@@ -148,6 +154,13 @@ function main() {
             ;;
         "setup")
             job_setup
+            ;;
+        "restart")
+            ansible_ckb_restart node1 &
+            ansible_ckb_restart node2 &
+            ansible_ckb_restart node3 &
+            wait
+            echo "restart succ"
             ;;
         "clean")
             clean_ckb_env node1 &
