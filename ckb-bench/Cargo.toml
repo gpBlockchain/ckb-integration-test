@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 ckb-types = "0.111.0"
-ckb-sdk = { git="https://github.com/nervosnetwork/ckb-sdk-rust.git",branch="master" }
+ckb-sdk = { git="https://github.com/nervosnetwork/ckb-sdk-rust.git",rev="4d373fc052b4f516751f99c498acc2db87b05580" }
 ckb-hash = "0.111.0"
 ckb-logger-config = "0.111.0"
 ckb-logger-service = "0.111.0"

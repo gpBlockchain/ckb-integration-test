@@ -328,7 +328,7 @@ impl TransactionProducer {
                         match tx_index % 3 {
                             0 => CellOutput::new_builder()
                                 .capacity((cell.output.capacity.value() - (self.add_tx_param.get_fee() + self.add_tx_param.get_contract_capacity())).pack())
-                                .lock(user.single_secp256k1_lock_script_via_data())
+                                .lock(user.single_secp256k1_lock_script_via_type())
                                 .type_(ScriptOpt::default())
                                 // .type_(self.add_tx_param.get_script_obj())
                                 .build(),
@@ -342,14 +342,14 @@ impl TransactionProducer {
                                 if enabled_data1_script {
                                     CellOutput::new_builder()
                                         .capacity((cell.output.capacity.value() - (self.add_tx_param.get_fee() + self.add_tx_param.get_contract_capacity())).pack())
-                                        .lock(user.single_secp256k1_lock_script_via_data1())
+                                        .lock(user.single_secp256k1_lock_script_via_type())
                                         .type_(ScriptOpt::default())
                                         // .type_(self.add_tx_param.get_script_obj())
                                         .build()
                                 } else {
                                     CellOutput::new_builder()
                                         .capacity((cell.output.capacity.value() - (self.add_tx_param.get_fee() + self.add_tx_param.get_contract_capacity())).pack())
-                                        .lock(user.single_secp256k1_lock_script_via_data())
+                                        .lock(user.single_secp256k1_lock_script_via_type())
                                         .type_(ScriptOpt::default())
                                         // .type_(self.add_tx_param.get_script_obj())
                                         .build()
