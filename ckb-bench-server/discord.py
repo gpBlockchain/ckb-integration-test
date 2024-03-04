@@ -11,7 +11,7 @@ variable_value = os.environ.get("RESULT")
 intents = discord.Intents.default()
 intents.message_content = True
 
-CHANNEL_ID = os.environ.get("CHANNEL_ID")
+CHANNEL_ID = 1097347489490800755
 TOKEN = os.environ.get("TOKEN")
 
 # 声明一个客户端
