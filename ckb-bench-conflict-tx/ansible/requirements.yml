@@ -1,6 +1,6 @@
 - src: https://github.com/cryptape/ansible-ckb
   scm: git
-  version: main
+  version: gp/ckb_block_assembler_notify
 - src: https://github.com/cryptape/ansible-ckb-benchmark
   scm: git
   version: debug
