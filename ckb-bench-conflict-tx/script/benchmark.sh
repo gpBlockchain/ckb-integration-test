@@ -126,14 +126,13 @@ function main() {
             ansible_deploy_download_ckb node2
             ansible_deploy_download_ckb node1
             ansible_deploy_download_ckb node3
-            ansible_deploy_download_ckb node4
             ansible_ckb_miner_start node1
             sleep 6
             ansible_ckb_miner_start node2
             sleep 6
             ansible_ckb_miner_start node3
-            sleep 6
-            ansible_ckb_miner_start node4
+#            sleep 6
+#            ansible_ckb_miner_start node4
             link_node_p2p node2 node1
             link_node_p2p node2 node3
             link_node_p2p node1 node2
