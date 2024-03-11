@@ -24,7 +24,7 @@ ckb_block_assembler:
 ckb_miner_dummy_value: 24000
 
 ckb_block_assembler_notify:
-  url: "http://127.0.0.1:8888"
+  url: "127.0.0.1:8888"
 
 ckb_prometheus:
   listen_address: "0.0.0.0:8100"
