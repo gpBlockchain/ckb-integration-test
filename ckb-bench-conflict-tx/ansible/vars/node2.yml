@@ -8,6 +8,7 @@ ckb_data_dir: "{{ ckb_workspace }}/data"
 ckb_rpc_listen_address: "0.0.0.0:8021"
 ckb_chain_spec_file: "benchmark-spec.toml"
 ckb_network_listen_addresses: ["/ip4/0.0.0.0/tcp/8051"]
+ckb_miner_rpc_url: "127.0.0.1:8021"
 ckb_miner_poll_interval: 1000
 #ckb_data_local_source: "ckb-prepare-data/big-tx/data.tar.gz"
 #ckb_data_download_url: "http://172.31.45.113:8000/data.1001w.tar.gz"
