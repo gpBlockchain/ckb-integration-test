@@ -78,7 +78,7 @@ ansible_deploy_download_ckb() {
   ansible_config
   cd $ANSIBLE_DIRECTORY
   ansible-playbook playbook.yml \
-    -e "ckb_download_url=$CKB_REMOTE_URL node=$1 ckb_download_tmp_dir=/tmp" \
+    -e "ckb_download_url=$CKB_REMOTE_URL node=$1 ckb_download_tmp_dir=/tmp ckb_miner_dummy_value=24000" \
     -t ckb_install,ckb_configure,ckb_restart
 }
 
