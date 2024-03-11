@@ -15,5 +15,5 @@ ckb_benchmark_owner_privkey: "98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07
 ckb_bench_n_inout: 1
 ckb_bench_tx_interval_ms: 1
 ckb_bench_time_ms: 1800000
-ckb_bench_concurrent_requests: 8
-ckb_bench_tps: 100
+ckb_bench_concurrent_requests: 4
+ckb_bench_tps: 2000
