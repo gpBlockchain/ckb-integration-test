@@ -2,6 +2,7 @@
 # ckb_sync_target_number: 10
 ckb_workspace: "/home/ckb/gp/sync/node2"
 ckb_download_tmp_dir: "/ckb-data"
+ckb_logger_filter: "info,ckb_relay=debug,ckb_tx_pool=debug,ckb_sync=debug"
 
 ckb_service: sync_ckb_node2
 ckb_data_dir: "{{ ckb_workspace }}/data"
