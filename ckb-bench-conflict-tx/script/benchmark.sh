@@ -108,7 +108,7 @@ function ansible_wait_ckb_benchmark() {
     cd $ANSIBLE_DIRECTORY
     ansible-playbook playbook.yml -e 'hostname=bastions node=bastions'  -t ckb_benchmark_install
     ansible-playbook playbook.yml -e 'hostname=bastions node=bastions'  -t ckb_benchmark_prepare
-    ansible-playbook playbook.yml -e 'hostname=bastions node=bastions'  -t ckb_bench_stop
+#    ansible-playbook playbook.yml -e 'hostname=bastions node=bastions'  -t ckb_bench_stop
     ansible-playbook playbook.yml -e 'hostname=bastions node=bastions ckb_bench_n_inout=1 ckb_bench_min_fee=2000 ckb_bench_max_fee=5000 ckb_benchmark_logfile=/var/lib/ckb-benchmark/ckb-bench-1.log'  -t ckb_benchmark_with_tps_and_fee &
     ansible-playbook playbook.yml -e 'hostname=bastions node=bastions ckb_bench_n_inout=1 ckb_bench_min_fee=2000 ckb_bench_max_fee=5000 ckb_benchmark_logfile=/var/lib/ckb-benchmark/ckb-bench-2.log'  -t ckb_benchmark_with_tps_and_fee &
     ansible-playbook playbook.yml -e 'hostname=bastions node=bastions ckb_bench_n_inout=1 ckb_bench_min_fee=2000 ckb_bench_max_fee=5000 ckb_benchmark_logfile=/var/lib/ckb-benchmark/ckb-bench-3.log'  -t ckb_benchmark_with_tps_and_fee &
