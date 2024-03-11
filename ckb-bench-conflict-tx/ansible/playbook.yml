@@ -61,6 +61,7 @@
         - ckb_benchmark_prepare
         - ckb_benchmark_with_tps
         - ckb_benchmark_start
+        - bench_with_tps_and_fee
 
     - name: Stop ckb bench
       include_role:
