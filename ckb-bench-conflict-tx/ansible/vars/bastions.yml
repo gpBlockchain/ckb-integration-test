@@ -11,7 +11,7 @@ ckb_mining_interval_ms: 500
 #          --concurrent-requests {{ ckb_bench_concurrent_requests }} \
 # http://127.0.0.1:8023
 ckb_benchmark_url: "http://172.31.37.178:8020,http://172.31.45.100:8021,http://172.31.36.9:8022"
-ckb_benchmark_n_users: 100
+ckb_benchmark_n_users: 10
 ckb_benchmark_owner_privkey: "98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946"
 ckb_bench_n_inout: 1
 ckb_bench_tx_interval_ms: 1
