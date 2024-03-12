@@ -9,5 +9,5 @@
 3. Connect the 3 nodes.
 4. Use ckb-bench to prepare 20,000 cells.
 5. Perform a 30-minute stress test using these 20,000 cells, with the following test scenarios:
-    1. Transfer one cell use diffrent fee at a transaction with a concurrency of 8.
+    1. Transfer one cell use diffrent fee at a transaction with a concurrency of 4.
 
