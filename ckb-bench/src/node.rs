@@ -4,7 +4,7 @@ use ckb_sdk::rpc::CkbRpcClient;
 use std::time::{Duration, Instant};
 use std::thread::sleep;
 use ckb_jsonrpc_types::{BlockNumber, BlockView};
-use ckb_sdk::rpc::ckb_indexer::{Cell, Order, Pagination, ScriptSearchMode, ScriptType, SearchKey};
+use ckb_sdk::rpc::ckb_indexer::{Cell, Order, Pagination, SearchMode, ScriptType, SearchKey};
 use ckb_sdk::RpcError;
 use ckb_types::packed;
 use ckb_types::packed::Script;
@@ -139,7 +139,7 @@ impl Node {
                 .build()
                 .into(),
             script_type: ScriptType::Lock,
-            script_search_mode: Some(ScriptSearchMode::Exact),
+            script_search_mode: Some(SearchMode::Exact),
             filter: None,
             with_data: None,
             group_by_transaction: None,
