@@ -70,9 +70,34 @@ script_paths = [
     "stress_test_scripts/get_cells_capacity_exact.128w.lua",
     "stress_test_scripts/get_cells_capacity_exact.256w.lua",
     "stress_test_scripts/get_cells_capacity_exact.512w.lua",
-    "stress_test_scripts/get_cells_capacity_exact.1024w.lua"
+    "stress_test_scripts/get_cells_capacity_exact.1024w.lua",
+
+    "stress_test_scripts/get_cells_exact.1w.0x64.lua",
+    "stress_test_scripts/get_cells_exact.2w.0x64.lua",
+    "stress_test_scripts/get_cells_exact.4w.0x64.lua",
+    "stress_test_scripts/get_cells_exact.8w.0x64.lua",
+    "stress_test_scripts/get_cells_exact.16w.0x64.lua",
+    "stress_test_scripts/get_cells_exact.32w.0x64.lua",
+    "stress_test_scripts/get_cells_exact.64w.0x64.lua",
+    "stress_test_scripts/get_cells_exact.128w.0x64.lua",
+    "stress_test_scripts/get_cells_exact.256w.0x64.lua",
+    "stress_test_scripts/get_cells_exact.512w.0x64.lua",
+    "stress_test_scripts/get_cells_exact.1024w.0x64.lua",
+
 ]
 test_urls = [
+    "http://172.31.45.100:8021",
+    "http://172.31.45.100:8021",
+    "http://172.31.45.100:8021",
+    "http://172.31.45.100:8021",
+    "http://172.31.45.100:8021",
+    "http://172.31.45.100:8021",
+    "http://172.31.45.100:8021",
+    "http://172.31.45.100:8021",
+    "http://172.31.45.100:8021",
+    "http://172.31.45.100:8021",
+    "http://172.31.45.100:8021",
+
     "http://172.31.45.100:8021",
     "http://172.31.45.100:8021",
     "http://172.31.45.100:8021",
