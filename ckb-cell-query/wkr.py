@@ -1,6 +1,6 @@
 import subprocess
 import re
-
+import time
 
 def parse_wrk_output(script_paths, test_urls):
     markdown_tables = []
@@ -49,6 +49,7 @@ def parse_wrk_output(script_paths, test_urls):
             markdown_tables.append(markdown_table)
         except:
             print(f"stress failed :{script_path}")
+        time.sleep(60)
     # Combine the header with the markdown tables
     combined_table = f"{header}\n{'|'.join(['-' * len(col) for col in header.split('|')])}\n{''.join(markdown_tables)}"
 
