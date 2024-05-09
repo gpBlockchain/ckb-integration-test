@@ -153,7 +153,7 @@ impl Node {
         for _ in 0..n_blocks {
             let template = self.rpc_client().get_block_template(None, None, None).unwrap();
             let block = packed::Block::from(template);
-            if block.transactions().len() < min_tx_size || block.proposals().len() < min_tx_size {
+            if block.transactions().len() < min_tx_size && block.proposals().len() < min_tx_size {
                 continue;
             }
             self.rpc_client().submit_block("".into(), block.into()).unwrap();
