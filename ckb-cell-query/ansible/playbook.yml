@@ -73,6 +73,12 @@
         public: false
       tags:
         - ckb_bench_clean
+    - name: ckb bench miner
+      include_role:
+        name: ansible-ckb-benchmark
+        public: false
+      tags:
+        - ckb_bench_miner
 
     ##  ansible-playbook playbook.yml \
     #    -e "node=localhost" \
