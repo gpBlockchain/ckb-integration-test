@@ -1,5 +1,5 @@
 ckb_urls: [ "http://172.31.37.178:8020,http://172.31.45.100:8021,http://172.31.36.9:8022" ]
-ckb_mining_interval_ms: 8000
+ckb_mining_interval_ms: 12000
 
 # {{ ckb_benchmark_workspace }}/ckb-bench bench \
 #          --rpc-urls {{ ckb_benchmark_url }} \
