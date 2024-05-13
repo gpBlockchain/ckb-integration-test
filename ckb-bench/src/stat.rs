@@ -37,12 +37,12 @@ pub struct Report {
     /// Total transactions size
     pub total_transactions_size: usize,
     /// set tps
-    pub set_send_tps:usize,
+    pub set_send_tps: usize,
     /// client send tps
-    pub client_send_tps:usize,
+    pub client_send_tps: usize,
 }
 
-#[derive(Debug, Serialize,Clone, Deserialize)]
+#[derive(Debug, Serialize, Clone, Deserialize)]
 pub struct BlockReport {
     pub block_delay_ms: Vec<u64>,
     pub tps: Vec<f64>,
@@ -59,7 +59,25 @@ pub fn stat(
     delay_time: Option<Duration>,
 ) -> Report {
     assert_ne!(from_number, 0);
-    assert!(from_number < to_number);
+    if (from_number >= to_number) {
+        return Report {
+            n_nodes: 0,
+            n_inout: 0,
+            ckb_version: "".to_string(),
+            delay_time_ms: Some(0),
+            from_block_number: from_number,
+            to_block_number: to_number,
+            transactions_per_second: 0,
+            transactions_size_per_second: 0,
+            average_block_transactions: 0,
+            average_block_transactions_size: 0,
+            average_block_time_ms: 0,
+            total_transactions: 0,
+            total_transactions_size: 0,
+            set_send_tps: 0,
+            client_send_tps: 0,
+        };
+    }
     let mut i = from_number;
     let mut j = from_number;
     let mut total_transactions = 0;
@@ -145,7 +163,15 @@ pub fn stat_metric(node: &Node,
                    from_number: BlockNumber,
                    to_number: BlockNumber) -> BlockReport {
     assert_ne!(from_number, 0);
-    assert!(from_number < to_number);
+    if (from_number >= to_number) {
+        return BlockReport {
+            block_delay_ms: vec![],
+            tps: vec![],
+            block_transaction_size: vec![],
+            block_number: vec![],
+            timestamp: vec![],
+        };
+    }
     //
     let mut block_delay_ms = vec![];
     let mut tps = vec![];

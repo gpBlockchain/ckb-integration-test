@@ -322,7 +322,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
 
             let (pending_pool_sender, pending_pool_receiver) = bounded(1000000);
             spawn(move || {
-                let ret = watcher_status.check_statue(3, t_bench);
+                let ret = watcher_status.check_statue(3, t_bench,is_smoking_test);
                 pending_pool_sender.send(ret).unwrap();
             });
 
@@ -458,7 +458,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 .collect::<Vec<_>>()
                 .into();
             let watch = Watcher::new(nodes);
-            watch.check_statue(internal_s1, Duration::from_secs(time_s));
+            watch.check_statue(internal_s1, Duration::from_secs(time_s),false);
         }
         ("stat", Some(arguments)) => {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);

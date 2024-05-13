@@ -71,7 +71,6 @@ def get_test_json_version(json_file_path):
     with open(json_file_path, "r") as json_file:
         # 使用json.load()方法将JSON文件的内容反序列化为字典
         json_data = json.load(json_file)
-    print(json_data['stat_report']['ckb_version'])
     match = re.search(r'\(([^ ]+)', json_data['stat_report']['ckb_version'])
     if match:
         result = match.group(1)
@@ -81,21 +80,25 @@ def get_test_json_version(json_file_path):
         print("未找到匹配的内容")
         return json_data['stat_report']['ckb_version']
 
-def get_bench_timestamp_grafana(json_file_path):
-    json_data = json_file_path.split("/")[-1].split(".")
-    return f"https://grafana-monitor.nervos.tech/d/pThsj6xVz/test?orgId=1&var-url=18.163.87.248:8100&var-url=18.163.155.251:8100&var-url=18.166.86.54:8100&from={json_data[-3]}000&to={json_data[-2]}000"
+
+
+def get_bench_timestamp_grafana(json_file_path_0_50w_file,json_file_path_50w_0_file):
+    json_0_50w_json_data = json_file_path_0_50w_file.split("/")[-1].split(".")
+    json_50w_0_json_data = json_file_path_50w_0_file.split("/")[-1].split(".")
+
+    return f"https://grafana-monitor.nervos.tech/d/pThsj6xVz/test?orgId=1&var-url=18.163.87.248:8100&var-url=18.163.155.251:8100&var-url=18.166.86.54:8100&from={json_0_50w_json_data[-3]}000&to={json_50w_0_json_data[-2]}000"
+
 
 # 生成makerdown 文本
 def json_to_key_value_md_table(json_data):
     # 检查输入是否为一个包含字典的 JSON 数组
     if not isinstance(json_data, list) or not all(isinstance(item, dict) for item in json_data):
         return "Invalid input. Please provide a JSON array of dictionaries."
-
-    md_table = "### ckb-bench-with-data \n\n"
+    md_table = "### ckb-pool-test \n\n"
     # 初始化 Markdown 表格头部
     md_table += "|"
 
-        # 遍历字典中的每个键值对
+    # 遍历字典中的每个键值对
     for key, value in json_data[0].items():
         # 将键和值添加到 Markdown 表格中
         md_table += f" {key} |"
@@ -116,7 +119,7 @@ def json_to_key_value_md_table(json_data):
         md_table +="\n |"
     md_table = md_table[:-1]
     md_table += " <hr/>\n"
-    md_table +="\n[Explanation of Terms](https://github.com/gpBlockchain/ckb-integration-test/tree/ckb-bench-server/ckb-bench-server#interpretation-of-test-results)"
+    md_table +="\n[Explanation of Terms](https://github.com/gpBlockchain/ckb-integration-test/tree/gp/cell-query/ckb-cell-query#interpretation-of-test-results)"
     return md_table
 
 if __name__ == '__main__':
@@ -125,11 +128,16 @@ if __name__ == '__main__':
     # 获取所有的json 文件
     json_files = get_all_json_files(TEMP_DIRECTORY)
     json_data = []
-
+    bench_0_50w_json_file = ""
+    bench_50w_0_json_file = ""
     for json_file in json_files:
-        # 获取 测试的ckb版本
-        ckb_version = get_test_json_version(json_file)
+        if "report.2000" in json_file:
+            bench_0_50w_json_file = json_file
+        if "report.1" in json_file:
+            bench_50w_0_json_file = json_file
 
+    ckb_version = get_test_json_version(bench_50w_0_json_file)
+    for json_file in json_files:
         # 上传html文件
         upload_file_to_qiniu(
             QINIU_ACCESS_KEY,
@@ -147,21 +155,40 @@ if __name__ == '__main__':
             f'ckb/ckb-bench/reports/{ckb_version}/{os.path.basename(json_file)}',
             json_file
         )
+    grafana_url = get_bench_timestamp_grafana(bench_0_50w_json_file,bench_50w_0_json_file)
 
-        # 获取grafana 链接
-        grafana_url = get_bench_timestamp_grafana(json_file)
+    # 获取html链接
+    report_50w_0_url = f'{GITHUB_LOGS_BASE_URL}/{ckb_version}/{os.path.basename(bench_50w_0_json_file).replace("json", "html")}'
+    report_0_50w_url = f'{GITHUB_LOGS_BASE_URL}/{ckb_version}/{os.path.basename(bench_0_50w_json_file).replace("json", "html")}'
 
-        # 获取html链接
-        report_url = f'{GITHUB_LOGS_BASE_URL}/{ckb_version}/{os.path.basename(json_file).replace("json", "html")}'
+    # 0_50w_client_send_tps
+    with open(bench_0_50w_json_file, "r") as json_file:
+        # 使用json.load()方法将JSON文件的内容反序列化为字典
+        bench_0_50w_json_data = json.load(json_file)
+    bench_0_50w_client_send_tps = bench_0_50w_json_data['stat_report']['client_send_tps']
 
-        with open(json_file, "r") as json_tmp_file:
-            json_tmp_data = json.load(json_tmp_file)
-            json_tmp_data['stat_report']['grafana'] = grafana_url
-            json_tmp_data['stat_report']['report'] = report_url
-            json_data.append(json_tmp_data['stat_report'])
+    # 50w_0_transactions_per_second average_block_time_ms max_pending_size min_pending_size
+    with open(bench_50w_0_json_file, "r") as json_file:
+        # 使用json.load()方法将JSON文件的内容反序列化为字典
+        bench_50w_0_json_data = json.load(json_file)
+    bench_50w_0_transactions_per_second = bench_50w_0_json_data['stat_report']['transactions_per_second']
+    bench_50w_0_average_block_time_ms = bench_50w_0_json_data['stat_report']['average_block_time_ms']
+    bench_50w_0_max_pending_size = bench_50w_0_json_data['pool_report']['pending'][0]
+    bench_50w_0_min_pending_size = bench_50w_0_json_data['pool_report']['pending'][-1]
+
+
     # 生成 md 语法
-
-    sorted_values_desc = sorted(json_data, key=lambda x: x['from_block_number'])
-    md = json_to_key_value_md_table(sorted_values_desc)
+    result = {
+        'ckb_version':ckb_version,
+        '0_50w_client_send_tps':bench_0_50w_client_send_tps,
+        '50w_0_transactions_per_second':bench_50w_0_transactions_per_second,
+        'average_block_time_ms':bench_50w_0_average_block_time_ms,
+        'max_pending_size':bench_50w_0_max_pending_size,
+        'min_pending_size':bench_50w_0_min_pending_size,
+        'grafana':grafana_url,
+        'tx_pool_0_50w_report':report_0_50w_url,
+        'tx_pool_50w_0_report':report_50w_0_url,
+    }
+    md = json_to_key_value_md_table([result])
     with open(MD_PATH, "w") as f:
         f.write(md)
