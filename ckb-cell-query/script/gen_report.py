@@ -119,6 +119,7 @@ def json_to_key_value_md_table(json_data):
         md_table +="\n |"
     md_table = md_table[:-1]
     md_table += " <hr/>\n"
+    md_table +="\n[Explanation of Terms](https://github.com/gpBlockchain/ckb-integration-test/tree/gp/cell-query/ckb-cell-query#interpretation-of-test-results)"
     return md_table
 
 if __name__ == '__main__':
