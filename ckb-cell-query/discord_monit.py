@@ -5,7 +5,8 @@ import sys
 import os
 import asyncio
 
-# export RESULT=`head -n 3 demo.md`
+# export RESULT=`head -n 5 demo.md | tail -n +3`
+# export RESULT=`head -n 3 wkr.md`
 variable_value = os.environ.get("RESULT")
 
 intents = discord.Intents.default()

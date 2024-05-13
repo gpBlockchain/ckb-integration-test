@@ -54,10 +54,10 @@ def parse_wrk_output(script_paths, test_urls):
     combined_table = f"{header}\n{'|'.join(['-' * len(col) for col in header.split('|')])}\n{''.join(markdown_tables)}"
 
     # Write the combined markdown table to a file
-    with open("demo.md", "w") as file:
+    with open("wkr.md", "w") as file:
         file.write(combined_table.strip())
 
-    print("Markdown table has been written to test_results.md")
+    print("Markdown table has been written to wkr.md")
 
 
 script_paths = [
