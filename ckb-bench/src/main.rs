@@ -25,7 +25,6 @@ use clap::{value_t_or_exit, values_t_or_exit, App, Arg, ArgMatches, SubCommand, 
 use crossbeam_channel::{bounded};
 use std::env;
 use std::ops::Div;
-use std::path::PathBuf;
 use std::process::exit;
 use std::str::FromStr;
 use std::thread::{sleep, spawn};
@@ -133,24 +132,12 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             }
         }
         ("dispatch", Some(arguments)) => {
-            let data_dir = value_t_or_exit!(arguments, "data-dir", PathBuf);
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
             let nodes = rpc_urls
                 .iter()
-                .map(|url| {
-                    let port = url.port().unwrap();
-                    let host = url.host_str().unwrap();
-                    let node_data_dir = data_dir.join(&format!("{}:{}", host, port));
-                    ::std::fs::create_dir_all(&node_data_dir).unwrap_or_else(|err| {
-                        panic!(
-                            "failed to create dir \"{}\", error: {}",
-                            node_data_dir.display(),
-                            err
-                        )
-                    });
-
+                .map(|url|
                     Node::init(url.as_str(), url.as_str())
-                })
+                )
                 .collect::<Vec<_>>();
             let n_users = value_t_or_exit!(arguments, "n-users", usize);
             let cells_per_user = value_t_or_exit!(arguments, "cells-per-user", u64);
@@ -189,21 +176,10 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             dispatch(&nodes, &owner, &users, cells_per_user, capacity_per_cell);
         }
         ("collect", Some(arguments)) => {
-            let data_dir = value_t_or_exit!(arguments, "data-dir", PathBuf);
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
             let nodes = rpc_urls
                 .iter()
                 .map(|url| {
-                    let port = url.port().unwrap();
-                    let host = url.host_str().unwrap();
-                    let node_data_dir = data_dir.join(&format!("{}:{}", host, port));
-                    ::std::fs::create_dir_all(&node_data_dir).unwrap_or_else(|err| {
-                        panic!(
-                            "failed to create dir \"{}\", error: {}",
-                            node_data_dir.display(),
-                            err
-                        )
-                    });
                     Node::init(url.as_str(), url.as_str())
                 })
                 .collect::<Vec<_>>();
