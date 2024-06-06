@@ -1,5 +1,6 @@
 mod logger;
 pub mod util;
+pub mod dag;
 
 use ckb_types::{h256, H256};
 

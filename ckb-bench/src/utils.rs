@@ -9,7 +9,7 @@ use crate::node::Node;
 pub fn maybe_retry_send_transaction(node: &Node, tx: &TransactionView) -> Result<bool, String> {
     let mut last_logging_time = Instant::now();
     loop {
-        let result = node.rpc_client().send_transaction(tx.data().into(),Some(OutputsValidator::Passthrough.into()));
+        let result = node.rpc_client().send_transaction(tx.data().into(), Some(OutputsValidator::Passthrough.into()));
         match result {
             Ok(_hash) => return Ok(true),
             Err(err) => {

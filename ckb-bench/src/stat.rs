@@ -163,7 +163,7 @@ pub fn stat_metric(node: &Node,
                    from_number: BlockNumber,
                    to_number: BlockNumber) -> BlockReport {
     assert_ne!(from_number, 0);
-    if (from_number >= to_number) {
+    if from_number >= to_number {
         return BlockReport {
             block_delay_ms: vec![],
             tps: vec![],
@@ -205,8 +205,8 @@ pub fn stat_metric(node: &Node,
     return BlockReport {
         block_delay_ms,
         tps,
-        block_transaction_size:block_transaction_size_list,
-        block_number:block_number_list,
+        block_transaction_size: block_transaction_size_list,
+        block_number: block_number_list,
         timestamp,
     };
 }
