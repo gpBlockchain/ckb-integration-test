@@ -1,14 +1,20 @@
 
 
 
-deploy dag contract 
+### deploy dag contract
+https://github.com/libraries/ckb/blob/new_spawn/script/testdata/spawn_dag.c
+change:
 ```angular2html
+    before: int ret = ckb_load_witness(data_buffer, &data_length, 0, 0, CKB_SOURCE_INPUT);
 
+    now: int ret = ckb_load_cell_data(data_buffer, &data_length, 0, 0, CKB_SOURCE_OUTPUT);
+    
 ```
+path: ckb-bench/docs/spawn_dag
 
 
 
-prepare account
+### prepare account
 ```angular2html
 CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 \
 ./ckb-bench dispatch \
@@ -19,7 +25,7 @@ CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd
   --n-users 100
 ```
 
-bench
+### bench
 ```angular2html
 CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 \
   ./ckb-bench bench   --is-smoking-test    --rpc-urls http://127.0.0.1:8114   --bench-time-ms 300000    --n-users 100    --n-inout 1   --tx-interval-ms 10   --concurrent-requests 1   --add-tx-params tx.json
