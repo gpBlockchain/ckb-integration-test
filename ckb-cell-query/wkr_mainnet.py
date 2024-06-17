@@ -17,6 +17,9 @@ def parse_wrk_output(script_paths, test_urls):
                 ["wrk", "-t1", "-c1", "-d1m", "-s", script_path, "--latency", test_url, "--timeout", "300s"],
                 capture_output=True, text=True)
 
+            with open('wkr.mainnet.debug.txt', 'a') as file:
+                file.write(f'wrk -t1 -c1 -d1m -s {script_path} --latency {test_url} --timeout 300s\n')
+                file.write(f'{output.stdout}\n')
             # Extract relevant information from the output using regular expressions
             match = re.search(r"Running (.+) test @ (.+)", output.stdout)
             if match:
