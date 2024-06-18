@@ -70,7 +70,7 @@ script_paths = [
     "stress_mainnet_scripts/get_cells.exact.0x64.otter.lua",
 
     "stress_mainnet_scripts/get_cells.partial.0x64.otter.lua",
-    "stress_mainnet_scripts/get_cells.partial.0x64.otter.lua"
+    "stress_mainnet_scripts/get_cells.partial.0x64.otter.lua",
 
     "stress_mainnet_scripts/get_cells.partial.0x64.secp256k1.0x.lua",
 
@@ -207,8 +207,21 @@ test_urls = [
     "http://172.31.37.178:8114",
     "http://172.31.36.9:8114",
 
-    "http://172.31.37.178:8114",
-    "http://172.31.36.9:8114",
+#     "http://172.31.37.178:8114",
+#     "http://172.31.36.9:8114",
+#
+#     "http://172.31.37.178:8114",
+#     "http://172.31.36.9:8114",
+#
+#     "http://172.31.37.178:8114",
+#
+#     "http://172.31.37.178:8114",
+#     "http://172.31.36.9:8114",
+#     "http://172.31.45.100:8114",
+#
+#     "http://172.31.37.178:8114",
+#     "http://172.31.36.9:8114",
+#     "http://172.31.45.100:8114",
 
     "http://172.31.37.178:8114",
     "http://172.31.36.9:8114",
