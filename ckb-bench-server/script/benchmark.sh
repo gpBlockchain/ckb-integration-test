@@ -80,6 +80,11 @@ ansible_deploy_download_ckb() {
   ansible-playbook playbook.yml \
     -e "ckb_download_url=$CKB_REMOTE_URL node=$1 ckb_download_tmp_dir=/tmp" \
     -t ckb_install,ckb_configure
+  sleep 5  
+  ansible-playbook playbook.yml \
+    -e "ckb_download_url=$CKB_REMOTE_URL node=$1 ckb_download_tmp_dir=/tmp" \
+    -t ckb_restart
+    
 }
 
 ansible_ckb_miner_start() {
