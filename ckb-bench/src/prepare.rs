@@ -258,6 +258,11 @@ pub fn collect(nodes: &[Node], owner: &User, users: &[User]) {
                 .calc_script_hash(),
             user.clone(),
         );
+        users_map.insert(
+            user.single_secp256k1_lock_script_via_data2()
+                .calc_script_hash(),
+            user.clone(),
+        );
     }
 
     let n_users = users.len();
