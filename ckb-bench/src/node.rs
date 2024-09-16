@@ -98,32 +98,43 @@ impl Node {
 
     pub fn wait_for_tx_pool(&self) {
         let rpc_client = self.rpc_client();
+        let mut begin_time = Instant::now();
         let mut chain_tip = rpc_client.get_tip_header().unwrap();
-        let mut tx_pool_tip = rpc_client.tx_pool_info().unwrap();
-        if chain_tip.hash == tx_pool_tip.tip_hash {
+        let get_tip_header_cost_time = begin_time.elapsed();
+        begin_time = Instant::now();
+        let mut block_template = rpc_client.get_block_template(None,None,None).unwrap();
+        let tx_pool_info_cost_time = begin_time.elapsed();
+        crate::debug!("get_tip_header_cost_time:{:?},tx_pool_info_cost_time:{:?}",
+            get_tip_header_cost_time,
+            tx_pool_info_cost_time);
+        if chain_tip.inner.number.value() < block_template.number.value() {
             return;
         }
         let mut instant = Instant::now();
-        while instant.elapsed() < Duration::from_secs(10) {
+        while instant.elapsed() < Duration::from_secs(100) {
             sleep(std::time::Duration::from_secs(1));
+            begin_time = Instant::now();
             chain_tip = rpc_client.get_tip_header().unwrap();
-            let prev_tx_pool_tip = tx_pool_tip;
-            tx_pool_tip = rpc_client.tx_pool_info().unwrap();
-            if chain_tip.hash == tx_pool_tip.tip_hash {
+            let get_tip_header_cost_time = begin_time.elapsed();
+            let prev_tip_header = chain_tip.clone();
+            begin_time = Instant::now();
+            block_template = rpc_client.get_block_template(None,None,None).unwrap();
+            let tx_pool_info_cost_time = begin_time.elapsed();
+            crate::debug!("get_tip_header_cost_time:{:?},get_block_template:{:?} ,tip block number:{:?},block_template number:{:?}",
+                get_tip_header_cost_time,tx_pool_info_cost_time,chain_tip.inner.number.value() , block_template.number.value());
+            if chain_tip.inner.number.value() < block_template.number.value() {
                 return;
-            } else if prev_tx_pool_tip.tip_hash != tx_pool_tip.tip_hash
-                && tx_pool_tip.tip_number.value() < chain_tip.inner.number.value()
+            } else if prev_tip_header.inner.number.value() < chain_tip.inner.number.value()
             {
                 instant = Instant::now();
             }
         }
 
         panic!(
-            "timeout to wait for tx pool,\n\tchain   tip: {:?}, {:#x},\n\ttx-pool tip: {}, {:#x}",
+            "timeout to wait for tx pool,\n\tchain   tip: {:?}, {:#x},\n\tblock_template tip: {}",
             chain_tip.inner.number.value(),
             chain_tip.hash,
-            tx_pool_tip.tip_number.value(),
-            tx_pool_tip.tip_hash,
+            block_template.number.value(),
         );
     }
     pub fn indexer(&self) -> Arc<CkbRpcClient> {
@@ -151,13 +162,25 @@ impl Node {
 
     pub fn mine(&self, n_blocks: u64, min_tx_size: usize) {
         for _ in 0..n_blocks {
+            let mut begin_time = Instant::now();
             let template = self.rpc_client().get_block_template(None, None, None).unwrap();
+            let get_block_template_cost_time = begin_time.elapsed();
             let block = packed::Block::from(template);
             if block.transactions().len() < min_tx_size && block.proposals().len() < min_tx_size {
                 continue;
             }
-            self.rpc_client().submit_block("".into(), block.into()).unwrap();
+            begin_time = Instant::now();
+            self.rpc_client().submit_block("".into(), block.clone().into()).unwrap();
+            let submit_block_cost_time = begin_time.elapsed();
+            begin_time = Instant::now();
             self.wait_for_tx_pool();
+            let wait_for_tx_pool_cost_time = begin_time.elapsed();
+            crate::debug!("block num:{:?},get_block_template:{:?},submit_block :{:?}, wait_for_tx_pool_cost_time:{:?}",
+                block.header().raw().number().to_string(),
+                get_block_template_cost_time,
+                submit_block_cost_time,
+                wait_for_tx_pool_cost_time
+            )
         }
     }
 
