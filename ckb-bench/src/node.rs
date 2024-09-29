@@ -4,7 +4,7 @@ use ckb_sdk::rpc::CkbRpcClient;
 use std::time::{Duration, Instant};
 use std::thread::sleep;
 use ckb_jsonrpc_types::{BlockNumber, BlockView};
-use ckb_sdk::rpc::ckb_indexer::{Cell, Order, Pagination, ScriptSearchMode, ScriptType, SearchKey};
+use ckb_sdk::rpc::ckb_indexer::{Cell, Order, Pagination, SearchMode, ScriptType, SearchKey};
 use ckb_sdk::RpcError;
 use ckb_types::packed;
 use ckb_types::packed::Script;
@@ -139,7 +139,7 @@ impl Node {
                 .build()
                 .into(),
             script_type: ScriptType::Lock,
-            script_search_mode: Some(ScriptSearchMode::Exact),
+            script_search_mode: Some(SearchMode::Exact),
             filter: None,
             with_data: None,
             group_by_transaction: None,
@@ -153,7 +153,7 @@ impl Node {
         for _ in 0..n_blocks {
             let template = self.rpc_client().get_block_template(None, None, None).unwrap();
             let block = packed::Block::from(template);
-            if block.transactions().len() < min_tx_size || block.proposals().len() < min_tx_size {
+            if block.transactions().len() < min_tx_size && block.proposals().len() < min_tx_size {
                 continue;
             }
             self.rpc_client().submit_block("".into(), block.into()).unwrap();

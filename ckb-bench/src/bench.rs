@@ -208,6 +208,11 @@ impl TransactionProducer {
                     .calc_script_hash(),
                 user.clone(),
             );
+            users_map.insert(
+                user.single_secp256k1_lock_script_via_data2()
+                    .calc_script_hash(),
+                user.clone(),
+            );
         }
 
         Self {
@@ -228,7 +233,7 @@ impl TransactionProducer {
     ) {
         // Environment variables `CKB_BENCH_ENABLE_DATA1_SCRIPT` and
         // `CKB_BENCH_ENABLE_INVALID_SINCE_EPOCH` are temporary.
-        let enabled_data1_script = match ::std::env::var("CKB_BENCH_ENABLE_DATA1_SCRIPT") {
+        let enabled_data2_script = match ::std::env::var("CKB_BENCH_ENABLE_DATA2_SCRIPT") {
             Ok(raw) => {
                 raw.parse()
                     .map_err(|err| crate::error!("failed to parse environment variable \"CKB_BENCH_ENABLE_DATA1_SCRIPT={}\", error: {}", raw, err))
@@ -236,6 +241,15 @@ impl TransactionProducer {
             }
             Err(_) => false,
         };
+        let ckb_bench_output_script_type = match ::std::env::var("CKB_BENCH_OUTPUT_SCRIPT") {
+            Ok(raw) => {
+                raw.parse()
+                    .map_err(|err| crate::error!("failed to parse environment variable \"CKB_BENCH_ENABLE_DATA1_SCRIPT={}\", error: {}", raw, err))
+                    .unwrap_or(-1)
+            }
+            Err(_) => -1,
+        };
+
         let enabled_invalid_since_epoch = match ::std::env::var("CKB_BENCH_ENABLE_INVALID_SINCE_EPOCH") {
             Ok(raw) => {
                 raw.parse()
@@ -244,7 +258,7 @@ impl TransactionProducer {
             }
             Err(_) => false,
         };
-        crate::info!("CKB_BENCH_ENABLE_DATA1_SCRIPT = {}", enabled_data1_script);
+        crate::info!("CKB_BENCH_ENABLE_DATA1_SCRIPT = {}", enabled_data2_script);
         crate::info!(
             "CKB_BENCH_ENABLE_INVALID_SINCE_EPOCH = {}",
             enabled_invalid_since_epoch
@@ -305,9 +319,12 @@ impl TransactionProducer {
                         // use tx_index as random number
 
                         let lock_hash = ckb_types::packed::Script::from(cell.output.lock.clone()).calc_script_hash();
-                        let tx_index = cell.tx_index.value();
+                        let mut tx_index = cell.tx_index.value();
                         let user = self.users.get(&lock_hash).expect("should be ok");
-                        match tx_index % 3 {
+                        if ckb_bench_output_script_type != -1 {
+                            tx_index = ckb_bench_output_script_type as u32
+                        }
+                        match tx_index % 4 {
                             0 => CellOutput::new_builder()
                                 .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
                                 .lock(user.single_secp256k1_lock_script_via_data())
@@ -319,10 +336,17 @@ impl TransactionProducer {
                                 .type_(self.add_tx_param.get_script_obj())
                                 .build(),
                             2 => {
-                                if enabled_data1_script {
+                                CellOutput::new_builder()
+                                    .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
+                                    .lock(user.single_secp256k1_lock_script_via_data1())
+                                    .type_(self.add_tx_param.get_script_obj())
+                                    .build()
+                            }
+                            3 => {
+                                if enabled_data2_script {
                                     CellOutput::new_builder()
                                         .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
-                                        .lock(user.single_secp256k1_lock_script_via_data1())
+                                        .lock(user.single_secp256k1_lock_script_via_data2())
                                         .type_(self.add_tx_param.get_script_obj())
                                         .build()
                                 } else {

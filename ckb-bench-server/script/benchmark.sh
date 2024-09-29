@@ -57,7 +57,7 @@ function ssh_gen_key() {
     for element in "${elements[@]}"; do
       echo "$element" >> $SSH_PRIVATE_KEY_PATH
     done
-    echo $SSH_ID_PUB > $SSH_PUBLIC_KEY_PATH
+#    echo $SSH_ID_PUB > $SSH_PUBLIC_KEY_PATH
     chmod 600 $SSH_PRIVATE_KEY_PATH
 }
 
@@ -79,7 +79,12 @@ ansible_deploy_download_ckb() {
   cd $ANSIBLE_DIRECTORY
   ansible-playbook playbook.yml \
     -e "ckb_download_url=$CKB_REMOTE_URL node=$1 ckb_download_tmp_dir=/tmp" \
-    -t ckb_install,ckb_configure,ckb_restart
+    -t ckb_install,ckb_configure
+  sleep 5  
+  ansible-playbook playbook.yml \
+    -e "ckb_download_url=$CKB_REMOTE_URL node=$1 ckb_download_tmp_dir=/tmp" \
+    -t ckb_restart
+    
 }
 
 ansible_ckb_miner_start() {
@@ -133,6 +138,18 @@ function main() {
             link_node_p2p node3 node1
             link_node_p2p node3 node2
             ansible_wait_ckb_benchmark
+            ;;
+        "deploy")
+            ansible_deploy_download_ckb node2
+            ansible_deploy_download_ckb node1
+            ansible_deploy_download_ckb node3
+            ansible_ckb_miner_start node2
+            link_node_p2p node2 node1
+            link_node_p2p node2 node3
+            link_node_p2p node1 node2
+            link_node_p2p node1 node3
+            link_node_p2p node3 node1
+            link_node_p2p node3 node2
             ;;
         "setup")
             job_setup
