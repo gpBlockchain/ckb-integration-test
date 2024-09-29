@@ -57,7 +57,7 @@ function ssh_gen_key() {
     for element in "${elements[@]}"; do
       echo "$element" >> $SSH_PRIVATE_KEY_PATH
     done
-    echo $SSH_ID_PUB > $SSH_PUBLIC_KEY_PATH
+#    echo $SSH_ID_PUB > $SSH_PUBLIC_KEY_PATH
     chmod 600 $SSH_PRIVATE_KEY_PATH
 }
 
