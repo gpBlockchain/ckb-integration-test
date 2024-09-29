@@ -136,9 +136,9 @@ function ansible_wait_ckb_benchmark() {
     ansible_config
     cd $ANSIBLE_DIRECTORY
     ansible-playbook playbook.yml -e 'hostname=bastions' -e 'node=bastions' -t ckb_benchmark_install
-    ansible-playbook playbook.yml -e 'hostname=bastions' -e 'node=bastions ckb_benchmark_url=http://172.31.37.178:8020' -t ckb_benchmark_miner_start
+    ansible-playbook playbook.yml -e 'hostname=bastions' -e 'node=bastions ckb_benchmark_url=http://172.31.23.160:8020' -t ckb_benchmark_miner_start
     ansible-playbook playbook.yml -e 'hostname=bastions' -e 'node=bastions ckb_bench_tps=2000 ckb_bench_time_ms=1000000 ckb_benchmark_n_users=11' -t ckb_benchmark_with_tps
-    ansible-playbook playbook.yml -e 'hostname=bastions' -e 'node=bastions ckb_benchmark_url=http://172.31.37.178:8020 ckb_mining_interval_ms=10 ckb_bench_min_tx_size=2 ckb_n_blocks=340' -t ckb_bench_miner &
+    ansible-playbook playbook.yml -e 'hostname=bastions' -e 'node=bastions ckb_benchmark_url=http://172.31.23.160:8020 ckb_mining_interval_ms=10 ckb_bench_min_tx_size=2 ckb_n_blocks=340' -t ckb_bench_miner &
     ansible-playbook playbook.yml -e 'hostname=bastions' -e 'node=bastions ckb_bench_tps=1 ckb_bench_time_ms=1000000 ckb_benchmark_n_users=11 ckb_bench_concurrent_requests=1' -t ckb_benchmark_with_tps
     ansible-playbook playbook.yml -e 'hostname=bastions' -e 'node=bastions' -e "ckb_bench_log_file=demo.tar.gz" -t process_result
 }

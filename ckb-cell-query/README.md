@@ -23,38 +23,38 @@ address	private key	cell
 ```angular2html
 
 
-CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.37.178:8020  --capacity-per-cell 7100000000   --cells-per-user 10000   --n-users 11
+CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.23.160:8020  --capacity-per-cell 7100000000   --cells-per-user 10000   --n-users 11
 
-CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.37.178:8020  --capacity-per-cell 7100000000   --cells-per-user 10000   --n-users 10
-
-
-CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.37.178:8020  --capacity-per-cell 7100000000   --cells-per-user 20000   --n-users 9
+CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.23.160:8020  --capacity-per-cell 7100000000   --cells-per-user 10000   --n-users 10
 
 
-CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.37.178:8020  --capacity-per-cell 7100000000   --cells-per-user 40000   --n-users 8
+CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.23.160:8020  --capacity-per-cell 7100000000   --cells-per-user 20000   --n-users 9
 
 
-CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.37.178:8020  --capacity-per-cell 7100000000   --cells-per-user 80000   --n-users 7
+CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.23.160:8020  --capacity-per-cell 7100000000   --cells-per-user 40000   --n-users 8
 
 
-CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.37.178:8020  --capacity-per-cell 7100000000   --cells-per-user 160000   --n-users 6
+CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.23.160:8020  --capacity-per-cell 7100000000   --cells-per-user 80000   --n-users 7
 
 
-
-CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.37.178:8020  --capacity-per-cell 7100000000   --cells-per-user 320000   --n-users 5
-
-
-CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.37.178:8020  --capacity-per-cell 7100000000   --cells-per-user 640000   --n-users 4
-
-
-CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.37.178:8020  --capacity-per-cell 7100000000   --cells-per-user 1280000   --n-users 3
+CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.23.160:8020  --capacity-per-cell 7100000000   --cells-per-user 160000   --n-users 6
 
 
 
-CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.37.178:8020  --capacity-per-cell 7100000000   --cells-per-user 2560000   --n-users 2
+CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.23.160:8020  --capacity-per-cell 7100000000   --cells-per-user 320000   --n-users 5
 
 
-CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.37.178:8020  --capacity-per-cell 7100000000   --cells-per-user 5120000   --n-users 1
+CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.23.160:8020  --capacity-per-cell 7100000000   --cells-per-user 640000   --n-users 4
+
+
+CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.23.160:8020  --capacity-per-cell 7100000000   --cells-per-user 1280000   --n-users 3
+
+
+
+CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.23.160:8020  --capacity-per-cell 7100000000   --cells-per-user 2560000   --n-users 2
+
+
+CKB_BENCH_OWNER_PRIVKEY=98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946 ./ckb-bench dispatch   --data-dir data/   --rpc-urls http://172.31.23.160:8020  --capacity-per-cell 7100000000   --cells-per-user 5120000   --n-users 1
 
 ```
 
