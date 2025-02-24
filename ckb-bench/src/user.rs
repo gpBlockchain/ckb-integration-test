@@ -49,6 +49,14 @@ impl User {
             .build()
     }
 
+    pub fn single_secp256k1_lock_script_via_data2(&self) -> Script {
+        Script::new_builder()
+            .hash_type(ScriptHashType::Data2.into())
+            .code_hash(SIGHASH_ALL_DATA_HASH.pack())
+            .args(self.single_secp256k1_address().0.pack())
+            .build()
+    }
+
     pub fn single_secp256k1_address(&self) -> H160 {
         let pubkey = self.single_secp256k1_pubkey();
         H160::from_slice(&blake2b_256(pubkey.serialize())[0..20]).unwrap()
@@ -128,6 +136,11 @@ impl User {
         live_out_points.extend(
             node
                 .get_cells_by_script(self.single_secp256k1_lock_script_via_data1())
+                .expect("indexer get_live_cells_by_lock_script").objects
+        );
+        live_out_points.extend(
+            node
+                .get_cells_by_script(self.single_secp256k1_lock_script_via_data2())
                 .expect("indexer get_live_cells_by_lock_script").objects
         );
 

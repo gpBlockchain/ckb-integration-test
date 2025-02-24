@@ -15,7 +15,7 @@ QINIU_BUCKET_NAME = "acceptance-test"
 # Paths
 TAR_FILE_PATH = "job/benchmark-in-10h/ansible/logs/demo.tar.gz"
 TEMP_DIRECTORY = "job/benchmark-in-10h/temp"
-GRAFANA_BASE_URL = "https://grafana-monitor.nervos.tech/d/pThsj6xVz/test?orgId=1&var-url=18.163.87.248:8100&var-url=18.163.155.251:8100"
+GRAFANA_BASE_URL = "https://grafana-monitor.nervos.tech/d/pThsj6xVz/test?orgId=1&var-url=18.163.87.248:8100&var-url=18.163.155.251:8100&var-url=18.166.86.54:8100"
 GITHUB_LOGS_BASE_URL = "http://github-test-logs.ckbapp.dev/ckb/ckb-bench/reports"
 MD_PATH = "demo.md"
 
@@ -83,7 +83,7 @@ def get_test_json_version(json_file_path):
 
 def get_bench_timestamp_grafana(json_file_path):
     json_data = json_file_path.split("/")[-1].split(".")
-    return f"https://grafana-monitor.nervos.tech/d/pThsj6xVz/test?orgId=1&var-url=18.163.87.248:8100&var-url=18.163.155.251:8100&from={json_data[-3]}000&to={json_data[-2]}000"
+    return f"https://grafana-monitor.nervos.tech/d/pThsj6xVz/test?orgId=1&var-url=18.163.87.248:8100&var-url=18.163.155.251:8100&var-url=18.166.86.54:8100&from={json_data[-3]}000&to={json_data[-2]}000"
 
 # 生成makerdown 文本
 def json_to_key_value_md_table(json_data):

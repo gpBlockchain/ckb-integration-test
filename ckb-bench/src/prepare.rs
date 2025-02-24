@@ -258,6 +258,11 @@ pub fn collect(nodes: &[Node], owner: &User, users: &[User]) {
                 .calc_script_hash(),
             user.clone(),
         );
+        users_map.insert(
+            user.single_secp256k1_lock_script_via_data2()
+                .calc_script_hash(),
+            user.clone(),
+        );
     }
 
     let n_users = users.len();
@@ -306,7 +311,7 @@ fn collect_inputs(
     let fee = inputs.len() as u64 * 1000;
     let output = CellOutput::new_builder()
         .capacity((inputs_capacity - fee).pack())
-        .lock(owner.single_secp256k1_lock_script_via_data())
+        .lock(owner.single_secp256k1_lock_script_via_type())
         .build();
     let unsigned_tx = TransactionBuilder::default()
         .inputs(
