@@ -86,7 +86,7 @@ def get_bench_timestamp_grafana(json_file_path_0_50w_file,json_file_path_50w_0_f
     json_0_50w_json_data = json_file_path_0_50w_file.split("/")[-1].split(".")
     json_50w_0_json_data = json_file_path_50w_0_file.split("/")[-1].split(".")
 
-    return f"https://grafana-monitor.nervos.tech/d/pThsj6xVz/test?orgId=1&var-url=18.163.87.248:8100&var-url=18.163.155.251:8100&var-url=18.166.86.54:8100&from={json_0_50w_json_data[-3]}000&to={json_50w_0_json_data[-2]}000"
+    return f"{GRAFANA_BASE_URL}&from={json_0_50w_json_data[-3]}000&to={json_50w_0_json_data[-2]}000"
 
 
 # 生成makerdown 文本
