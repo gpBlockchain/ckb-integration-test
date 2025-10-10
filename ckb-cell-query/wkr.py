@@ -13,7 +13,7 @@ def parse_wrk_output(script_paths, test_urls):
             print(f"script_path:{script_path},test_url:{test_url}")
             # Run the shell command and capture the output
             output = subprocess.run(
-                ["wrk", "-t1", "-c1", "-d5m", "-s", script_path, "--latency", test_url, "--timeout", "300s"],
+                ["wrk", "-t1", "-c1", "-d3m", "-s", script_path, "--latency", test_url, "--timeout", "300s"],
                 capture_output=True, text=True)
 
             # Extract relevant information from the output using regular expressions
