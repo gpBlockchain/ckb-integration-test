@@ -6,7 +6,7 @@ pip install qiniu
 python script/gen_report.py
 report=`cat demo.md`
 export GITHUB_TOKEN=${GITHUB_TOKEN}
-bash script/ok.sh add_comment nervosnetwork/ckb 2372 "$report"
+bash script/ok.sh add_comment cryptape/acceptance-internal 1222 "$report"
 
 python wkr.py
 report=`cat wkr.md`
