@@ -15,7 +15,7 @@ QINIU_BUCKET_NAME = "acceptance-test"
 # Paths
 TAR_FILE_PATH = "job/benchmark-in-10h/ansible/logs/demo.tar.gz"
 TEMP_DIRECTORY = "job/benchmark-in-10h/temp"
-GRAFANA_BASE_URL = "https://grafana-monitor.nervos.tech/d/pThsj6xVz/test?orgId=1&var-url=18.163.87.248:8100&var-url=18.163.155.251:8100&var-url=18.166.86.54:8100"
+GRAFANA_BASE_URL = "https://grafana-monitor.nervos.tech/d/pThsj6xVz/test?orgId=1&var-url=18.167.71.41:8100&var-url=43.198.254.225:8100&var-url=43.199.108.57:8100"
 GITHUB_LOGS_BASE_URL = "http://github-test-logs.ckbapp.dev/ckb/ckb-bench/reports"
 MD_PATH = "demo.md"
 
