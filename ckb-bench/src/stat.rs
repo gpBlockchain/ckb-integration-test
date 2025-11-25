@@ -59,7 +59,7 @@ pub fn stat(
     delay_time: Option<Duration>,
 ) -> Report {
     assert_ne!(from_number, 0);
-    if (from_number >= to_number) {
+    if from_number >= to_number {
         return Report {
             n_nodes: 0,
             n_inout: 0,
@@ -163,7 +163,7 @@ pub fn stat_metric(node: &Node,
                    from_number: BlockNumber,
                    to_number: BlockNumber) -> BlockReport {
     assert_ne!(from_number, 0);
-    if (from_number >= to_number) {
+    if from_number >= to_number {
         return BlockReport {
             block_delay_ms: vec![],
             tps: vec![],

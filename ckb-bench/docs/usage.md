@@ -174,3 +174,18 @@ example
 2023-05-30 09:13:15.955 +00:00 main INFO ckb_bench::watcher  [node] node_id:"http://18.162.180.86:8131/", tip_number:115443, pool msg: pending :0,orphan:100,proposed: 0 
 2023-05-30 09:13:16.090 +00:00 main INFO ckb_bench::watcher  [node] node_id:"http://18.162.235.225:8565/", tip_number:115443, pool msg: pending :0,orphan:0,proposed: 0 
 ```
+
+### Query Derived Users Balance
+
+You can query balances of `N` derived users using `info`. It derives users from `CKB_BENCH_OWNER_PRIVKEY` and aggregates spendable cells across type/data/data1 lock scripts.
+
+```shell
+CKB_BENCH_OWNER_PRIVKEY=xxxx \
+ckb-bench info \
+  --rpc-urls http://127.0.0.1:8111 \
+  --n-users 100
+```
+
+- `--rpc-urls`: CKB RPC URL(s). First URL is used to index balances.
+- `--n-users`: Number of derived users to query.
+- `CKB_BENCH_OWNER_PRIVKEY`: Parent private key used to derive user keys.

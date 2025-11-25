@@ -57,6 +57,67 @@ fn main() {
 
 pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
     match clap_arg_match.subcommand() {
+        ("info", Some(arguments)) => {
+            let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
+            let nodes = rpc_urls
+                .iter()
+                .map(|url| {
+                    Node::init(url.as_str(), url.as_str())
+                })
+                .collect::<Vec<_>>();
+            let n_users = value_t_or_exit!(arguments, "n-users", usize);
+            let owner_raw_privkey = env::var("CKB_BENCH_OWNER_PRIVKEY").unwrap_or_else(|err| {
+                prompt_and_exit!(
+                    "cannot find \"CKB_BENCH_OWNER_PRIVKEY\" from environment variables, error: {}",
+                    err
+                )
+            });
+            let genesis_block = nodes[0].clone().genesis_block.unwrap();
+            let users = {
+                let owner_byte32_privkey =
+                    Byte32::from_slice(H256::from_str(&owner_raw_privkey).unwrap().as_bytes())
+                        .unwrap_or_else(|err| {
+                            prompt_and_exit!(
+                                "failed to parse CKB_BENCH_OWNER_PRIVKEY to Byte32, error: {}",
+                                err
+                            )
+                        });
+                let privkeys = derive_privkeys(owner_byte32_privkey, n_users);
+                privkeys
+                    .into_iter()
+                    .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
+                    .collect::<Vec<_>>()
+            };
+            crate::info!("info with params --n-users {}", users.len());
+            let owner_byte32_privkey =
+                Byte32::from_slice(H256::from_str(&owner_raw_privkey).unwrap().as_bytes())
+                    .unwrap_or_else(|err| {
+                        prompt_and_exit!(
+                                "failed to parse CKB_BENCH_OWNER_PRIVKEY to Byte32, error: {}",
+                                err
+                            )
+                    });
+            let owner_key = Privkey::from_slice(owner_byte32_privkey.as_slice());
+            let owner = User::new(genesis_block.clone(), Some(owner_key));
+            let live_cells = owner.get_spendable_single_secp256k1_cells(&nodes[0]);
+            let owner_capacity: u64 = live_cells.iter().map(|cell| cell.output.capacity.value()).sum();
+            crate::info!("owner address:{},balance:{} live cells:{}", owner.single_secp256k1_address(), owner_capacity, live_cells.len());
+
+            let mut total_capacity_sum: u128 = 0;
+            for (i, user) in users.iter().enumerate() {
+                let live_cells = user.get_spendable_single_secp256k1_cells(&nodes[0]);
+                let user_capacity: u64 = live_cells.iter().map(|cell| cell.output.capacity.value()).sum();
+                println!(
+                    "user {} address:{} balance:{} live cells:{}",
+                    i,
+                    user.single_secp256k1_address(),
+                    user_capacity,
+                    live_cells.len()
+                );
+                total_capacity_sum += user_capacity as u128;
+            }
+            println!("total balance of {} users: {}", users.len(), total_capacity_sum);
+        }
         ("miner", Some(arguments)) => {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
             let n_blocks = value_t_or_exit!(arguments, "n-blocks", u64);
@@ -135,9 +196,9 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
             let nodes = rpc_urls
                 .iter()
-                .map(|url|
+                .map(|url| {
                     Node::init(url.as_str(), url.as_str())
-                )
+                })
                 .collect::<Vec<_>>();
             let n_users = value_t_or_exit!(arguments, "n-users", usize);
             let cells_per_user = value_t_or_exit!(arguments, "cells-per-user", u64);
@@ -457,6 +518,30 @@ fn clap_app() -> App<'static, 'static> {
     include_str!("../Cargo.toml");
     App::new("ckb-bench")
         .version(git_version::git_version!())
+        .subcommand(
+            SubCommand::with_name("info")
+                .about("query balances of N users")
+                .arg(
+                    Arg::with_name("rpc-urls")
+                        .long("rpc-urls")
+                        .value_name("URLS")
+                        .help("CKB rpc urls, prefix with network protocol, delimited by comma, e.g. \"http://127.0.0.1:8114,http://127.0.0.2.8114\"")
+                        .required(true)
+                        .takes_value(true)
+                        .multiple(true)
+                        .use_delimiter(true)
+                        .validator(|s| Url::parse(&s).map(|_| ()).map_err(|err| err.to_string())),
+                )
+                .arg(
+                    Arg::with_name("n-users")
+                        .long("n-users")
+                        .value_name("NUMBER")
+                        .takes_value(true)
+                        .help("Number of users")
+                        .required(true)
+                        .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
+                ),
+        )
         .subcommand(
             SubCommand::with_name("miner")
                 .about("runs ckb miner")
