@@ -20,13 +20,15 @@ client = discord.Client(intents=intents)
 # 将Markdown表格内容转换为嵌入式表格
 def markdown_table_to_embed(content):
     lines = content.strip().split('\n')
-    headers = lines[0].strip().split('|')[1:-1]
+    headers = [h.strip() for h in lines[0].strip().split('|')[1:-1]]
     rows = [line.strip().split('|')[1:-1] for line in lines[2:]]
 
+    allowed_fields = {'ckb_version', 'transactions_per_second'}
     embed = Embed(title="性能测试结果")
     for row in rows:
         for i, field in enumerate(row):
-            embed.add_field(name=headers[i].strip(), value=field.strip(), inline=True)
+            if headers[i] in allowed_fields:
+                embed.add_field(name=headers[i], value=field.strip(), inline=True)
 
     return embed
 
