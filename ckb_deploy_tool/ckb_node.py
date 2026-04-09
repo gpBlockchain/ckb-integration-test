@@ -245,7 +245,12 @@ def add_node(
     node1_vars: dict,
     node2_vars: dict,
 ):
-    """Connect node2 to node1 via add_node RPC (replaces ckb_add_node.yml)."""
+    """Connect node2 to node1 via add_node RPC (replaces ckb_add_node.yml).
+
+    Automatically waits for both nodes' RPC services to be ready before
+    issuing any RPC calls, avoiding ConnectionRefusedError when nodes
+    have just been (re)started.
+    """
     n1_rpc_port = node1_vars.get("ckb_rpc_listen_address", "0.0.0.0:8114").split(":")[-1]
     n2_rpc_port = node2_vars.get("ckb_rpc_listen_address", "0.0.0.0:8114").split(":")[-1]
     n1_listen = node1_vars.get("ckb_network_listen_addresses", ["/ip4/0.0.0.0/tcp/8114"])
@@ -256,6 +261,11 @@ def add_node(
 
     rpc1 = CkbRpcClient(f"http://{node1_ip}:{n1_rpc_port}")
     rpc2 = CkbRpcClient(f"http://{node2_ip}:{n2_rpc_port}")
+
+    logger.info(f"Waiting for RPC on {node1_host.name} ({rpc1.url}) ...")
+    rpc1.wait_for_rpc_ready()
+    logger.info(f"Waiting for RPC on {node2_host.name} ({rpc2.url}) ...")
+    rpc2.wait_for_rpc_ready()
 
     info = rpc1.local_node_info()
     node1_id = info["node_id"]
@@ -270,6 +280,7 @@ def set_network_active(host: Host, node_vars: dict, active: bool):
     """Set network active state via RPC (replaces ckb_set_network_active.yml)."""
     rpc_port = node_vars.get("ckb_rpc_listen_address", "0.0.0.0:8114").split(":")[-1]
     rpc = CkbRpcClient(f"http://{host.ansible_host}:{rpc_port}")
+    rpc.wait_for_rpc_ready()
     rpc.set_network_active(active)
 
 
@@ -277,6 +288,7 @@ def wait_pending_load(host: Host, node_vars: dict, pending_target: int):
     """Wait until pending tx count >= target (replaces ckb_wait_pending_load.yml)."""
     rpc_port = node_vars.get("ckb_rpc_listen_address", "0.0.0.0:8114").split(":")[-1]
     rpc = CkbRpcClient(f"http://{host.ansible_host}:{rpc_port}")
+    rpc.wait_for_rpc_ready()
     rpc.wait_pending_ge(pending_target)
 
 
@@ -284,4 +296,5 @@ def wait_pending_commit(host: Host, node_vars: dict, pending_target: int):
     """Wait until pending tx count == target (replaces ckb_wait_pengding_tx_commit.yml)."""
     rpc_port = node_vars.get("ckb_rpc_listen_address", "0.0.0.0:8114").split(":")[-1]
     rpc = CkbRpcClient(f"http://{host.ansible_host}:{rpc_port}")
+    rpc.wait_for_rpc_ready()
     rpc.wait_pending_eq(pending_target)

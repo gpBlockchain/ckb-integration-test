@@ -8,6 +8,9 @@ import urllib.error
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_RPC_READY_RETRIES = 60
+DEFAULT_RPC_READY_DELAY = 5
+
 
 class CkbRpcClient:
     def __init__(self, url: str):
@@ -30,17 +33,42 @@ class CkbRpcClient:
         with urllib.request.urlopen(req, timeout=30) as resp:
             return json.loads(resp.read().decode("utf-8"))
 
+    def _call_with_retry(self, method: str, params: list = None,
+                         retries: int = DEFAULT_RPC_READY_RETRIES,
+                         delay: int = DEFAULT_RPC_READY_DELAY) -> dict:
+        """Call an RPC method, retrying on connection errors (e.g. node still booting)."""
+        last_err = None
+        for attempt in range(1, retries + 1):
+            try:
+                return self._call(method, params)
+            except (urllib.error.URLError, ConnectionError, OSError) as e:
+                last_err = e
+                logger.warning(
+                    f"RPC {method} to {self.url} failed (attempt {attempt}/{retries}): {e}"
+                )
+                if attempt < retries:
+                    time.sleep(delay)
+        raise ConnectionError(
+            f"RPC {method} to {self.url} failed after {retries} attempts: {last_err}"
+        ) from last_err
+
+    def wait_for_rpc_ready(self, retries: int = DEFAULT_RPC_READY_RETRIES,
+                           delay: int = DEFAULT_RPC_READY_DELAY):
+        """Block until the RPC endpoint responds successfully."""
+        self._call_with_retry("local_node_info", retries=retries, delay=delay)
+        logger.info(f"RPC {self.url} is ready")
+
     def local_node_info(self) -> dict:
-        resp = self._call("local_node_info")
+        resp = self._call_with_retry("local_node_info")
         return resp["result"]
 
     def add_node(self, peer_id: str, address: str):
-        resp = self._call("add_node", [peer_id, address])
+        resp = self._call_with_retry("add_node", [peer_id, address])
         logger.info(f"add_node response: {resp}")
         return resp
 
     def set_network_active(self, state: bool):
-        resp = self._call("set_network_active", [state])
+        resp = self._call_with_retry("set_network_active", [state])
         logger.info(f"set_network_active({state}) response: {resp}")
         return resp
 
