@@ -79,6 +79,7 @@ class CkbNode:
         """Configure CKB node (replaces ckb_configure tag).
 
         Generates ckb.toml and sets up systemd service.
+        Uses SFTP write_file() instead of shell heredocs to avoid quoting issues.
         """
         logger.info(f"Configuring CKB on {self.host.name}")
         merged = {**self.vars}
@@ -93,11 +94,14 @@ class CkbNode:
 
         self.ssh.run(f"mkdir -p {self.data_dir}/logs", sudo=True)
 
-        init_cmd = f"cd {self.workspace} && {self.workspace}/ckb init --chain dev --force 2>/dev/null || true"
-        self.ssh.run(init_cmd, sudo=True)
+        self.ssh.run(
+            f"cd {self.workspace} && {self.workspace}/ckb init --chain dev --force 2>/dev/null || true",
+            sudo=True,
+        )
 
         if spec_file:
-            self.ssh.upload(spec_file, f"/tmp/_ckb_spec.toml")
+            self.ssh.run(f"mkdir -p {self.workspace}/specs", sudo=True)
+            self.ssh.upload(spec_file, "/tmp/_ckb_spec.toml")
             self.ssh.run(f"cp /tmp/_ckb_spec.toml {self.workspace}/specs/{chain_spec}", sudo=True)
 
         rpc_listen = merged.get("ckb_rpc_listen_address", "0.0.0.0:8114")
@@ -121,7 +125,7 @@ class CkbNode:
         ckb_toml_parts.append(f'log_dir = "{self.data_dir}/logs"')
 
         if block_assembler:
-            ckb_toml_parts.append(f'\n[block_assembler]')
+            ckb_toml_parts.append('\n[block_assembler]')
             ckb_toml_parts.append(f'code_hash = "{block_assembler.get("code_hash", "")}"')
             ckb_toml_parts.append(f'args = "{block_assembler.get("args", "")}"')
             ckb_toml_parts.append(f'hash_type = "{block_assembler.get("hash_type", "type")}"')
@@ -132,60 +136,55 @@ class CkbNode:
             ckb_toml_parts.append(f'\n[miner.workers]\n[miner.workers.Dummy]\ndelay_type = "Constant"\nvalue = {miner_dummy}')
 
         if prometheus:
-            ckb_toml_parts.append(f'\n[metrics.exporter.prometheus]')
+            ckb_toml_parts.append('\n[metrics.exporter.prometheus]')
             ckb_toml_parts.append(f'listen_address = "{prometheus.get("listen_address", "0.0.0.0:8100")}"')
 
-        ckb_toml_content = "\n".join(ckb_toml_parts)
-        self.ssh.run(f"cat > {self.workspace}/ckb.toml << 'CKBEOF'\n{ckb_toml_content}\nCKBEOF", sudo=True)
+        ckb_toml_content = "\n".join(ckb_toml_parts) + "\n"
+        self.ssh.write_file(f"{self.workspace}/ckb.toml", ckb_toml_content, sudo=True)
 
         miner_poll = merged.get("ckb_miner_poll_interval", 1000)
-        miner_toml = f"""[miner]
-client = {{ rpc_url = "http://127.0.0.1:{self.rpc_port}" }}
-poll_interval = {miner_poll}
-"""
-        if block_assembler and block_assembler.get("key"):
-            pass
-
-        self.ssh.run(f"cat > {self.workspace}/ckb-miner.toml << 'MINEREOF'\n{miner_toml}\nMINEREOF", sudo=True)
-
-        systemd_unit = f"""[Unit]
-Description=CKB Node ({self.service})
-After=network.target
-
-[Service]
-Type=simple
-ExecStart={self.workspace}/ckb -C {self.workspace} run
-Restart=on-failure
-User=root
-WorkingDirectory={self.workspace}
-
-[Install]
-WantedBy=multi-user.target
-"""
-        self.ssh.run(
-            f"cat > /etc/systemd/system/{self.service}.service << 'SVCEOF'\n{systemd_unit}\nSVCEOF",
-            sudo=True,
+        miner_toml = (
+            "[miner]\n"
+            f'client = {{ rpc_url = "http://127.0.0.1:{self.rpc_port}" }}\n'
+            f"poll_interval = {miner_poll}\n"
         )
+        self.ssh.write_file(f"{self.workspace}/ckb-miner.toml", miner_toml, sudo=True)
+
+        systemd_unit = (
+            "[Unit]\n"
+            f"Description=CKB Node ({self.service})\n"
+            "After=network.target\n"
+            "\n"
+            "[Service]\n"
+            "Type=simple\n"
+            f"ExecStart={self.workspace}/ckb -C {self.workspace} run\n"
+            "Restart=on-failure\n"
+            "User=root\n"
+            f"WorkingDirectory={self.workspace}\n"
+            "\n"
+            "[Install]\n"
+            "WantedBy=multi-user.target\n"
+        )
+        self.ssh.write_file(f"/etc/systemd/system/{self.service}.service", systemd_unit, sudo=True)
 
         miner_service_name = f"{self.service}_miner"
-        miner_unit = f"""[Unit]
-Description=CKB Miner ({miner_service_name})
-After={self.service}.service
-
-[Service]
-Type=simple
-ExecStart={self.workspace}/ckb -C {self.workspace} miner
-Restart=on-failure
-User=root
-WorkingDirectory={self.workspace}
-
-[Install]
-WantedBy=multi-user.target
-"""
-        self.ssh.run(
-            f"cat > /etc/systemd/system/{miner_service_name}.service << 'MSVEOF'\n{miner_unit}\nMSVEOF",
-            sudo=True,
+        miner_unit = (
+            "[Unit]\n"
+            f"Description=CKB Miner ({miner_service_name})\n"
+            f"After={self.service}.service\n"
+            "\n"
+            "[Service]\n"
+            "Type=simple\n"
+            f"ExecStart={self.workspace}/ckb -C {self.workspace} miner\n"
+            "Restart=on-failure\n"
+            "User=root\n"
+            f"WorkingDirectory={self.workspace}\n"
+            "\n"
+            "[Install]\n"
+            "WantedBy=multi-user.target\n"
         )
+        self.ssh.write_file(f"/etc/systemd/system/{miner_service_name}.service", miner_unit, sudo=True)
+
         self.ssh.run("systemctl daemon-reload", sudo=True)
 
     def start(self):

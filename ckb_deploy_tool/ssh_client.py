@@ -1,8 +1,10 @@
 """SSH client wrapper using paramiko for remote command execution and file transfer."""
 
+import io
 import os
 import logging
 import paramiko
+import tempfile
 import time
 from typing import Optional
 
@@ -48,7 +50,8 @@ class SSHClient:
     def run(self, cmd: str, sudo: bool = False, check: bool = True, env: Optional[dict] = None) -> str:
         self.connect()
         if sudo:
-            cmd = f"sudo bash -c '{cmd}'"
+            escaped = cmd.replace("\\", "\\\\").replace('"', '\\"').replace('$', '\\$').replace('`', '\\`')
+            cmd = f'sudo bash -c "{escaped}"'
         logger.info(f"[{self.host}] Running: {cmd}")
         stdin, stdout, stderr = self._client.exec_command(cmd, timeout=self.timeout, environment=env)
         exit_code = stdout.channel.recv_exit_status()
@@ -67,7 +70,8 @@ class SSHClient:
     def run_long(self, cmd: str, sudo: bool = False, timeout: int = 72000) -> str:
         self.connect()
         if sudo:
-            cmd = f"sudo bash -c '{cmd}'"
+            escaped = cmd.replace("\\", "\\\\").replace('"', '\\"').replace('$', '\\$').replace('`', '\\`')
+            cmd = f'sudo bash -c "{escaped}"'
         logger.info(f"[{self.host}] Running (long): {cmd}")
         stdin, stdout, stderr = self._client.exec_command(cmd, timeout=timeout)
         exit_code = stdout.channel.recv_exit_status()
@@ -97,6 +101,27 @@ class SSHClient:
         logger.info(f"[{self.host}] Downloading {remote_path} -> {local_path}")
         sftp.get(remote_path, local_path)
         sftp.close()
+
+    def write_file(self, remote_path: str, content: str, sudo: bool = False):
+        """Write string content to a remote file safely via SFTP.
+
+        Avoids shell quoting issues that arise when piping multi-line
+        content through ``sudo bash -c '...'`` (heredocs, single quotes, etc.).
+        """
+        self.connect()
+        logger.info(f"[{self.host}] Writing file {remote_path} ({len(content)} bytes)")
+        sftp = self._client.open_sftp()
+        if sudo:
+            tmp_path = f"/tmp/_deploy_write_{os.path.basename(remote_path)}"
+            with sftp.open(tmp_path, "w") as f:
+                f.write(content)
+            sftp.close()
+            self.run(f"mkdir -p $(dirname {remote_path})", sudo=True)
+            self.run(f"mv {tmp_path} {remote_path}", sudo=True)
+        else:
+            with sftp.open(remote_path, "w") as f:
+                f.write(content)
+            sftp.close()
 
     def __enter__(self):
         self.connect()
