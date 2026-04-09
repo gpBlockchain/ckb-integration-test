@@ -6,10 +6,17 @@ import time
 import urllib.request
 import urllib.error
 
+from .config import get as _cfg
+
 logger = logging.getLogger(__name__)
 
-DEFAULT_RPC_READY_RETRIES = 60
-DEFAULT_RPC_READY_DELAY = 5
+
+def _rpc_ready_retries():
+    return _cfg("rpc.ready_retries", 60)
+
+
+def _rpc_ready_delay():
+    return _cfg("rpc.ready_delay_sec", 5)
 
 
 class CkbRpcClient:
@@ -34,9 +41,13 @@ class CkbRpcClient:
             return json.loads(resp.read().decode("utf-8"))
 
     def _call_with_retry(self, method: str, params: list = None,
-                         retries: int = DEFAULT_RPC_READY_RETRIES,
-                         delay: int = DEFAULT_RPC_READY_DELAY) -> dict:
+                         retries: int = None,
+                         delay: int = None) -> dict:
         """Call an RPC method, retrying on connection errors (e.g. node still booting)."""
+        if retries is None:
+            retries = _rpc_ready_retries()
+        if delay is None:
+            delay = _rpc_ready_delay()
         last_err = None
         for attempt in range(1, retries + 1):
             try:
@@ -52,8 +63,8 @@ class CkbRpcClient:
             f"RPC {method} to {self.url} failed after {retries} attempts: {last_err}"
         ) from last_err
 
-    def wait_for_rpc_ready(self, retries: int = DEFAULT_RPC_READY_RETRIES,
-                           delay: int = DEFAULT_RPC_READY_DELAY):
+    def wait_for_rpc_ready(self, retries: int = None,
+                           delay: int = None):
         """Block until the RPC endpoint responds successfully."""
         self._call_with_retry("local_node_info", retries=retries, delay=delay)
         logger.info(f"RPC {self.url} is ready")

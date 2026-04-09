@@ -9,6 +9,7 @@ from typing import Optional
 from .ssh_client import SSHClient
 from .ckb_rpc import CkbRpcClient
 from .inventory import Host
+from .config import get as _cfg
 
 logger = logging.getLogger(__name__)
 
@@ -20,14 +21,14 @@ class CkbNode:
         self.ssh = ssh
         self.host = host
         self.vars = vars_data
-        self.workspace = vars_data.get("ckb_workspace", "/var/lib/ckb")
-        self.service = vars_data.get("ckb_service", "ckb")
+        self.workspace = vars_data.get("ckb_workspace", _cfg("ckb.workspace", "/var/lib/ckb"))
+        self.service = vars_data.get("ckb_service", _cfg("ckb.service", "ckb"))
         self.data_dir = vars_data.get("ckb_data_dir", f"{self.workspace}/data")
-        self.rpc_address = vars_data.get("ckb_rpc_listen_address", "0.0.0.0:8114")
+        self.rpc_address = vars_data.get("ckb_rpc_listen_address", _cfg("ckb.rpc_listen_address", "0.0.0.0:8114"))
         self.network_listen = vars_data.get(
-            "ckb_network_listen_addresses", ["/ip4/0.0.0.0/tcp/8114"]
+            "ckb_network_listen_addresses", _cfg("ckb.network_listen_addresses", ["/ip4/0.0.0.0/tcp/8114"])
         )
-        self.download_tmp_dir = vars_data.get("ckb_download_tmp_dir", "/tmp")
+        self.download_tmp_dir = vars_data.get("ckb_download_tmp_dir", _cfg("ckb.download_tmp_dir", "/tmp"))
 
     @property
     def rpc_port(self) -> str:
@@ -197,7 +198,7 @@ def _patch_ckb_toml(default_toml: str, merged: dict) -> str:
     """
     doc = tomlkit.parse(default_toml)
 
-    data_dir = merged.get("ckb_data_dir", "/var/lib/ckb/data")
+    data_dir = merged.get("ckb_data_dir", _cfg("ckb.data_dir", "/var/lib/ckb/data"))
     doc["data_dir"] = data_dir
 
     chain_spec = merged.get("ckb_chain_spec_file", "")
@@ -221,15 +222,15 @@ def _patch_ckb_toml(default_toml: str, merged: dict) -> str:
     if rpc_listen:
         doc.setdefault("rpc", {})["listen_address"] = rpc_listen
 
-    rpc_modules = [
+    rpc_modules = _cfg("ckb.rpc_modules", [
         "Net", "Pool", "Miner", "Chain", "Stats",
         "Subscription", "Experiment", "Debug", "Indexer",
-    ]
+    ])
     doc.setdefault("rpc", {})["modules"] = rpc_modules
 
     logger_tbl = doc.setdefault("logger", {})
-    logger_tbl["log_to_file"] = True
-    logger_tbl["log_to_stdout"] = False
+    logger_tbl["log_to_file"] = _cfg("ckb.logger.log_to_file", True)
+    logger_tbl["log_to_stdout"] = _cfg("ckb.logger.log_to_stdout", False)
     logger_tbl["log_dir"] = f"{data_dir}/logs"
 
     block_assembler = merged.get("ckb_block_assembler", {})
@@ -281,7 +282,7 @@ def load_node_vars(vars_dir: str, node_name: str) -> dict:
         return {}
     with open(path) as f:
         data = yaml.safe_load(f) or {}
-    workspace = data.get("ckb_workspace", "/var/lib/ckb")
+    workspace = data.get("ckb_workspace", _cfg("ckb.workspace", "/var/lib/ckb"))
     for k, v in data.items():
         if isinstance(v, str) and "{{ ckb_workspace }}" in v:
             data[k] = v.replace("{{ ckb_workspace }}", workspace)

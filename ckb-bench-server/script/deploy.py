@@ -18,7 +18,7 @@ import concurrent.futures
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
-from ckb_deploy_tool import Inventory, SSHClient, CkbNode, CkbBenchmark
+from ckb_deploy_tool import Inventory, SSHClient, CkbNode, CkbBenchmark, config_get
 from ckb_deploy_tool.ckb_node import load_node_vars, add_node
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -75,10 +75,7 @@ def get_ssh(host, paths):
 
 
 def get_ckb_remote_url():
-    return os.environ.get(
-        "CKB_REMOTE_URL",
-        "http://github-test-logs.ckbapp.dev/ckb/bin/ckb-develop-x86_64-unknown-linux-gnu-portable.tar.gz",
-    )
+    return os.environ.get("CKB_REMOTE_URL", config_get("ckb.download_url"))
 
 
 def deploy_node(node_name, paths, extra_vars=None):

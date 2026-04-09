@@ -5,11 +5,9 @@ import os
 from typing import Optional
 from .ssh_client import SSHClient
 from .inventory import Host
+from .config import get as _cfg
 
 logger = logging.getLogger(__name__)
-
-CKB_BENCHMARK_WORKSPACE = "/var/lib/ckb-benchmark"
-CKB_BENCHMARK_BIN = f"{CKB_BENCHMARK_WORKSPACE}/ckb-bench"
 
 
 class CkbBenchmark:
@@ -19,19 +17,23 @@ class CkbBenchmark:
         self.ssh = ssh
         self.host = host
         self.vars = vars_data
-        self.workspace = CKB_BENCHMARK_WORKSPACE
+        self.workspace = _cfg("benchmark.workspace", "/var/lib/ckb-benchmark")
+        self.bin_path = f"{self.workspace}/ckb-bench"
 
     def install(self, bench_url: Optional[str] = None):
-        """Install ckb-bench binary (replaces ckb_benchmark_install tag)."""
+        """Install ckb-bench binary."""
         logger.info(f"Installing ckb-bench on {self.host.name}")
         self.ssh.run(f"mkdir -p {self.workspace}/data", sudo=True)
-        url = bench_url or "https://github.com/nervosnetwork/ckb-integration-test/releases/latest/download/ckb-bench-linux-x86_64.tar.gz"
+        url = bench_url or _cfg(
+            "benchmark.download_url",
+            "https://github.com/nervosnetwork/ckb-integration-test/releases/latest/download/ckb-bench-linux-x86_64.tar.gz",
+        )
         self.ssh.run(
             f"cd /tmp && "
             f"curl -L -o ckb-bench.tar.gz '{url}' && "
             f"tar xzf ckb-bench.tar.gz && "
-            f"cp -f ckb-bench {CKB_BENCHMARK_BIN} && "
-            f"chmod +x {CKB_BENCHMARK_BIN} && "
+            f"cp -f ckb-bench {self.bin_path} && "
+            f"chmod +x {self.bin_path} && "
             f"rm -f ckb-bench.tar.gz ckb-bench",
             sudo=True,
         )
@@ -40,7 +42,7 @@ class CkbBenchmark:
         """Prepare benchmark cells (replaces ckb_benchmark_prepare tag)."""
         urls_str = ",".join(rpc_urls)
         cmd = (
-            f"{CKB_BENCHMARK_BIN} prepare "
+            f"{self.bin_path} prepare "
             f"--rpc-urls {urls_str} "
             f"--n-users {n_users}"
         )
@@ -58,7 +60,7 @@ class CkbBenchmark:
     ):
         """Start miner via ckb-bench (replaces ckb_benchmark_miner_start tag)."""
         cmd = (
-            f"nohup {CKB_BENCHMARK_BIN} miner "
+            f"nohup {self.bin_path} miner "
             f"--rpc-url {rpc_url} "
             f"--mining-interval-ms {mining_interval_ms}"
         )
@@ -87,7 +89,7 @@ class CkbBenchmark:
         urls_str = ",".join(rpc_urls)
         log_path = logfile or f"{self.workspace}/data/ckb-bench.log"
         cmd = (
-            f"{CKB_BENCHMARK_BIN} bench "
+            f"{self.bin_path} bench "
             f"--rpc-urls {urls_str} "
             f"--n-users {n_users} "
             f"--n-inout {n_inout} "
@@ -120,7 +122,7 @@ class CkbBenchmark:
         max_fee = kwargs.get("max_fee")
 
         cmd = (
-            f"nohup {CKB_BENCHMARK_BIN} bench "
+            f"nohup {self.bin_path} bench "
             f"--rpc-urls {urls_str} "
             f"--n-users {n_users} "
             f"--n-inout {n_inout} "
