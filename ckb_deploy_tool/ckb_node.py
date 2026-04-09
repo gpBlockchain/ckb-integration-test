@@ -1,10 +1,10 @@
 """CKB node operations via SSH - replaces ansible-ckb role."""
 
-import json
 import logging
 import os
 import re
 import yaml
+import tomlkit
 from typing import Optional
 from .ssh_client import SSHClient
 from .ckb_rpc import CkbRpcClient
@@ -48,7 +48,7 @@ class CkbNode:
         return CkbRpcClient(self.rpc_url)
 
     def install(self, download_url: str, download_tmp_dir: Optional[str] = None):
-        """Download and install CKB binary (replaces ckb_install tag)."""
+        """Download and install CKB binary."""
         tmp_dir = download_tmp_dir or self.download_tmp_dir
         logger.info(f"Installing CKB on {self.host.name} from {download_url}")
         self.ssh.run(f"mkdir -p {self.workspace}", sudo=True)
@@ -64,7 +64,7 @@ class CkbNode:
         self.ssh.run(f"{self.workspace}/ckb --version", sudo=True)
 
     def data_install(self, data_url: str):
-        """Download and install CKB data (replaces ckb_data_install tag)."""
+        """Download and install CKB data."""
         logger.info(f"Installing CKB data on {self.host.name} from {data_url}")
         self.ssh.run(f"mkdir -p {self.data_dir}", sudo=True)
         self.ssh.run(
@@ -76,24 +76,20 @@ class CkbNode:
         )
 
     def configure(self, spec_file: Optional[str] = None, extra_vars: Optional[dict] = None):
-        """Configure CKB node (replaces ckb_configure tag).
+        """Configure CKB node.
 
-        Strategy: let ``ckb init`` generate a complete default ckb.toml
-        (with all required fields like max_peers, etc.), then read it back
-        and patch only the fields we need to change.  This avoids the
-        ``missing field`` errors that occur when generating ckb.toml from
-        scratch.
+        Strategy:
+        1. ``ckb init --chain dev --force`` generates a complete default config
+        2. Read ckb.toml / ckb-miner.toml back via SSH
+        3. Use tomlkit to parse and patch only the fields we need
+        4. Write the patched TOML back via SFTP
+
+        tomlkit preserves comments, ordering and all CKB-required fields.
         """
         logger.info(f"Configuring CKB on {self.host.name}")
         merged = {**self.vars}
         if extra_vars:
             merged.update(extra_vars)
-
-        chain_spec = merged.get("ckb_chain_spec_file", "")
-        chain_spec_bundled = merged.get("ckb_chain_spec_bundled", "")
-        bootnodes = merged.get("ckb_network_bootnodes", [])
-        block_assembler = merged.get("ckb_block_assembler", {})
-        prometheus = merged.get("ckb_prometheus", {})
 
         self.ssh.run(f"mkdir -p {self.workspace}", sudo=True)
         self.ssh.run(f"mkdir -p {self.data_dir}/logs", sudo=True)
@@ -103,7 +99,8 @@ class CkbNode:
             sudo=True,
         )
 
-        if spec_file:
+        chain_spec = merged.get("ckb_chain_spec_file", "")
+        if spec_file and chain_spec:
             self.ssh.run(f"mkdir -p {self.workspace}/specs", sudo=True)
             self.ssh.upload(spec_file, "/tmp/_ckb_spec.toml")
             self.ssh.run(f"cp /tmp/_ckb_spec.toml {self.workspace}/specs/{chain_spec}", sudo=True)
@@ -116,41 +113,43 @@ class CkbNode:
         patched_miner = _patch_miner_toml(default_miner, self.rpc_port, merged)
         self.ssh.write_file(f"{self.workspace}/ckb-miner.toml", patched_miner, sudo=True)
 
+        self._write_systemd_units()
+
+    def _write_systemd_units(self):
         systemd_unit = (
             "[Unit]\n"
             f"Description=CKB Node ({self.service})\n"
-            "After=network.target\n"
-            "\n"
+            "After=network.target\n\n"
             "[Service]\n"
             "Type=simple\n"
             f"ExecStart={self.workspace}/ckb -C {self.workspace} run\n"
             "Restart=on-failure\n"
             "User=root\n"
-            f"WorkingDirectory={self.workspace}\n"
-            "\n"
+            f"WorkingDirectory={self.workspace}\n\n"
             "[Install]\n"
             "WantedBy=multi-user.target\n"
         )
-        self.ssh.write_file(f"/etc/systemd/system/{self.service}.service", systemd_unit, sudo=True)
+        self.ssh.write_file(
+            f"/etc/systemd/system/{self.service}.service", systemd_unit, sudo=True
+        )
 
-        miner_service_name = f"{self.service}_miner"
+        miner_svc = f"{self.service}_miner"
         miner_unit = (
             "[Unit]\n"
-            f"Description=CKB Miner ({miner_service_name})\n"
-            f"After={self.service}.service\n"
-            "\n"
+            f"Description=CKB Miner ({miner_svc})\n"
+            f"After={self.service}.service\n\n"
             "[Service]\n"
             "Type=simple\n"
             f"ExecStart={self.workspace}/ckb -C {self.workspace} miner\n"
             "Restart=on-failure\n"
             "User=root\n"
-            f"WorkingDirectory={self.workspace}\n"
-            "\n"
+            f"WorkingDirectory={self.workspace}\n\n"
             "[Install]\n"
             "WantedBy=multi-user.target\n"
         )
-        self.ssh.write_file(f"/etc/systemd/system/{miner_service_name}.service", miner_unit, sudo=True)
-
+        self.ssh.write_file(
+            f"/etc/systemd/system/{miner_svc}.service", miner_unit, sudo=True
+        )
         self.ssh.run("systemctl daemon-reload", sudo=True)
 
     def start(self):
@@ -183,140 +182,98 @@ class CkbNode:
         self.ssh.run(f"rm -rf {self.workspace}", sudo=True)
 
     def status(self):
-        out = self.ssh.run(f"systemctl status {self.service} || true", sudo=True)
-        return out
+        return self.ssh.run(f"systemctl status {self.service} || true", sudo=True)
 
+
+# ---------------------------------------------------------------------------
+# TOML patching – uses tomlkit so comments and unknown keys are preserved
+# ---------------------------------------------------------------------------
 
 def _patch_ckb_toml(default_toml: str, merged: dict) -> str:
-    """Patch the default ckb.toml generated by ``ckb init`` with our overrides.
+    """Patch the default ckb.toml with values from *merged* vars dict.
 
-    Works by reading the existing TOML line-by-line and replacing specific
-    key = value lines.  This preserves all default fields (max_peers, etc.)
-    that CKB requires but we don't explicitly set.
+    Uses *tomlkit* so every field CKB ships by default (max_peers, etc.)
+    is kept intact; we only override what we explicitly configure.
     """
-    import re as _re
+    doc = tomlkit.parse(default_toml)
 
     data_dir = merged.get("ckb_data_dir", "/var/lib/ckb/data")
-    rpc_listen = merged.get("ckb_rpc_listen_address", "0.0.0.0:8114")
-    network_listen = merged.get("ckb_network_listen_addresses", ["/ip4/0.0.0.0/tcp/8114"])
-    bootnodes = merged.get("ckb_network_bootnodes", [])
+    doc["data_dir"] = data_dir
+
     chain_spec = merged.get("ckb_chain_spec_file", "")
     chain_spec_bundled = merged.get("ckb_chain_spec_bundled", "")
+    if chain_spec:
+        doc.setdefault("chain", {})["spec"] = tomlkit.inline_table()
+        doc["chain"]["spec"].append("file", f"specs/{chain_spec}")
+    elif chain_spec_bundled:
+        doc.setdefault("chain", {})["spec"] = tomlkit.inline_table()
+        doc["chain"]["spec"].append("bundled", chain_spec_bundled)
+
+    network_listen = merged.get("ckb_network_listen_addresses")
+    if network_listen:
+        doc.setdefault("network", {})["listen_addresses"] = network_listen
+
+    bootnodes = merged.get("ckb_network_bootnodes")
+    if bootnodes:
+        doc.setdefault("network", {})["bootnodes"] = bootnodes
+
+    rpc_listen = merged.get("ckb_rpc_listen_address")
+    if rpc_listen:
+        doc.setdefault("rpc", {})["listen_address"] = rpc_listen
+
+    rpc_modules = [
+        "Net", "Pool", "Miner", "Chain", "Stats",
+        "Subscription", "Experiment", "Debug", "Indexer",
+    ]
+    doc.setdefault("rpc", {})["modules"] = rpc_modules
+
+    logger_tbl = doc.setdefault("logger", {})
+    logger_tbl["log_to_file"] = True
+    logger_tbl["log_to_stdout"] = False
+    logger_tbl["log_dir"] = f"{data_dir}/logs"
+
     block_assembler = merged.get("ckb_block_assembler", {})
-    prometheus = merged.get("ckb_prometheus", {})
-
-    lines = default_toml.splitlines()
-    result = []
-    current_section = ""
-
-    for line in lines:
-        stripped = line.strip()
-
-        section_match = _re.match(r'^\[([^\]]+)\]', stripped)
-        if section_match:
-            current_section = section_match.group(1)
-
-        if stripped.startswith("data_dir"):
-            result.append(f'data_dir = "{data_dir}"')
-            continue
-
-        if current_section == "chain" and stripped.startswith("spec"):
-            if chain_spec:
-                result.append(f'spec = {{ file = "specs/{chain_spec}" }}')
-            elif chain_spec_bundled:
-                result.append(f'spec = {{ bundled = "{chain_spec_bundled}" }}')
-            else:
-                result.append(line)
-            continue
-
-        if current_section == "network" and stripped.startswith("listen_addresses"):
-            result.append(f"listen_addresses = {json.dumps(network_listen)}")
-            continue
-
-        if current_section == "network" and stripped.startswith("bootnodes") and bootnodes:
-            result.append(f"bootnodes = {json.dumps(bootnodes)}")
-            continue
-
-        if current_section == "rpc" and stripped.startswith("listen_address"):
-            result.append(f'listen_address = "{rpc_listen}"')
-            continue
-
-        if current_section == "rpc" and stripped.startswith("modules"):
-            result.append('modules = ["Net", "Pool", "Miner", "Chain", "Stats", "Subscription", "Experiment", "Debug", "Indexer"]')
-            continue
-
-        if current_section == "logger" and stripped.startswith("log_to_file"):
-            result.append("log_to_file = true")
-            continue
-        if current_section == "logger" and stripped.startswith("log_to_stdout"):
-            result.append("log_to_stdout = false")
-            continue
-        if current_section == "logger" and stripped.startswith("log_dir"):
-            result.append(f'log_dir = "{data_dir}/logs"')
-            continue
-
-        result.append(line)
-
-    content = "\n".join(result) + "\n"
-
     if block_assembler and block_assembler.get("code_hash"):
-        content = _remove_toml_section(content, "block_assembler")
-        content += (
-            "\n[block_assembler]\n"
-            f'code_hash = "{block_assembler["code_hash"]}"\n'
-            f'args = "{block_assembler.get("args", "")}"\n'
-            f'hash_type = "{block_assembler.get("hash_type", "type")}"\n'
-            f'message = "{block_assembler.get("message", "0x")}"\n'
-        )
+        ba = tomlkit.table()
+        ba.add("code_hash", block_assembler["code_hash"])
+        ba.add("args", block_assembler.get("args", ""))
+        ba.add("hash_type", block_assembler.get("hash_type", "type"))
+        ba.add("message", block_assembler.get("message", "0x"))
+        doc["block_assembler"] = ba
 
+    prometheus = merged.get("ckb_prometheus", {})
     if prometheus and prometheus.get("listen_address"):
-        content = _remove_toml_section(content, "metrics.exporter.prometheus")
-        content += (
-            "\n[metrics.exporter.prometheus]\n"
-            f'listen_address = "{prometheus["listen_address"]}"\n'
-        )
+        metrics = doc.setdefault("metrics", {})
+        exporter = metrics.setdefault("exporter", {})
+        prom = tomlkit.table()
+        prom.add("listen_address", prometheus["listen_address"])
+        exporter["prometheus"] = prom
 
-    return content
-
-
-def _remove_toml_section(content: str, section_name: str) -> str:
-    """Remove a TOML section and all its content (including commented-out versions).
-
-    Removes everything from the line containing ``[section_name]`` (commented
-    or not) up to (but not including) the next ``[other_section]`` header.
-    Also removes stray bare keys (code_hash, args, etc.) that might have been
-    placed after a commented-out section header.
-    """
-    import re as _re
-    escaped = _re.escape(section_name)
-    pattern = (
-        r'(?m)'
-        r'^[# \t]*\[' + escaped + r'\][^\n]*\n'
-        r'(?:(?!\[)[^\n]*\n)*'
-    )
-    return _re.sub(pattern, '', content)
+    return tomlkit.dumps(doc)
 
 
 def _patch_miner_toml(default_miner: str, rpc_port: str, merged: dict) -> str:
-    """Patch the default ckb-miner.toml with our overrides."""
-    lines = default_miner.splitlines()
-    result = []
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith("rpc_url"):
-            result.append(f'rpc_url = "http://127.0.0.1:{rpc_port}"')
-            continue
-        poll = merged.get("ckb_miner_poll_interval")
-        if poll and stripped.startswith("poll_interval"):
-            result.append(f"poll_interval = {poll}")
-            continue
-        result.append(line)
-    return "\n".join(result) + "\n"
+    """Patch the default ckb-miner.toml."""
+    doc = tomlkit.parse(default_miner)
 
+    if "miner" in doc:
+        miner = doc["miner"]
+        if "client" in miner:
+            miner["client"]["rpc_url"] = f"http://127.0.0.1:{rpc_port}"
+
+        poll = merged.get("ckb_miner_poll_interval")
+        if poll is not None:
+            miner["poll_interval"] = poll
+
+    return tomlkit.dumps(doc)
+
+
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
 
 def load_node_vars(vars_dir: str, node_name: str) -> dict:
-    """Load variables from a YAML vars file, resolving Ansible-style template references."""
-    import os
+    """Load variables from a YAML vars file, resolving template references."""
     path = os.path.join(vars_dir, f"{node_name}.yml")
     if not os.path.exists(path):
         path = os.path.join(vars_dir, "all.yml")
@@ -337,11 +294,9 @@ def add_node(
     node1_vars: dict,
     node2_vars: dict,
 ):
-    """Connect node2 to node1 via add_node RPC (replaces ckb_add_node.yml).
+    """Connect node2 to node1 via add_node RPC.
 
-    Automatically waits for both nodes' RPC services to be ready before
-    issuing any RPC calls, avoiding ConnectionRefusedError when nodes
-    have just been (re)started.
+    Waits for both nodes' RPC services to be ready first.
     """
     n1_rpc_port = node1_vars.get("ckb_rpc_listen_address", "0.0.0.0:8114").split(":")[-1]
     n2_rpc_port = node2_vars.get("ckb_rpc_listen_address", "0.0.0.0:8114").split(":")[-1]
@@ -369,7 +324,7 @@ def add_node(
 
 
 def set_network_active(host: Host, node_vars: dict, active: bool):
-    """Set network active state via RPC (replaces ckb_set_network_active.yml)."""
+    """Set network active state via RPC."""
     rpc_port = node_vars.get("ckb_rpc_listen_address", "0.0.0.0:8114").split(":")[-1]
     rpc = CkbRpcClient(f"http://{host.ansible_host}:{rpc_port}")
     rpc.wait_for_rpc_ready()
@@ -377,7 +332,7 @@ def set_network_active(host: Host, node_vars: dict, active: bool):
 
 
 def wait_pending_load(host: Host, node_vars: dict, pending_target: int):
-    """Wait until pending tx count >= target (replaces ckb_wait_pending_load.yml)."""
+    """Wait until pending tx count >= target."""
     rpc_port = node_vars.get("ckb_rpc_listen_address", "0.0.0.0:8114").split(":")[-1]
     rpc = CkbRpcClient(f"http://{host.ansible_host}:{rpc_port}")
     rpc.wait_for_rpc_ready()
@@ -385,7 +340,7 @@ def wait_pending_load(host: Host, node_vars: dict, pending_target: int):
 
 
 def wait_pending_commit(host: Host, node_vars: dict, pending_target: int):
-    """Wait until pending tx count == target (replaces ckb_wait_pengding_tx_commit.yml)."""
+    """Wait until pending tx count == target."""
     rpc_port = node_vars.get("ckb_rpc_listen_address", "0.0.0.0:8114").split(":")[-1]
     rpc = CkbRpcClient(f"http://{host.ansible_host}:{rpc_port}")
     rpc.wait_for_rpc_ready()

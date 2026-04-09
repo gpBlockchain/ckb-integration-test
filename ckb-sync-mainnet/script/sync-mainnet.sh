@@ -31,7 +31,7 @@ GITHUB_REF_NAME=${GITHUB_REF_NAME:-"develop"}
 GITHUB_REPOSITORY=${GITHUB_REPOSITORY:-"nervosnetwork/ckb"}
 GITHUB_BRANCH=${GITHUB_BRANCH:-"$GITHUB_REF_NAME"}
 
-pip install paramiko pyyaml -q 2>/dev/null || true
+pip install paramiko pyyaml tomlkit -q 2>/dev/null || true
 
 terraform_config() {
   export TF_VAR_access_key=$AWS_ACCESS_KEY

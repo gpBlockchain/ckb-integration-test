@@ -5,7 +5,7 @@ START_TIME=${START_TIME:-"$(date +%Y-%m-%d' '%H:%M:%S.%6N)"}
 
 SCRIPT_PATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
-pip install paramiko pyyaml -q 2>/dev/null || true
+pip install paramiko pyyaml tomlkit -q 2>/dev/null || true
 
 main() {
   case $1 in
