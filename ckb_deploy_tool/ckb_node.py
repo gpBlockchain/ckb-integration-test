@@ -231,7 +231,6 @@ def _patch_ckb_toml(default_toml: str, merged: dict) -> str:
     logger_tbl = doc.setdefault("logger", {})
     logger_tbl["log_to_file"] = _cfg("ckb.logger.log_to_file", True)
     logger_tbl["log_to_stdout"] = _cfg("ckb.logger.log_to_stdout", False)
-    logger_tbl["log_dir"] = f"{data_dir}/logs"
 
     block_assembler = merged.get("ckb_block_assembler", {})
     if block_assembler and block_assembler.get("code_hash"):
