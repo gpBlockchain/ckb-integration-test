@@ -1,3 +1,4 @@
+pip install paramiko pyyaml -q 2>/dev/null || true
 pip install qiniu
 pip install discord
 bash script/benchmark.sh setup
