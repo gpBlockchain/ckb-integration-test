@@ -260,32 +260,41 @@ def _patch_ckb_toml(default_toml: str, merged: dict) -> str:
     content = "\n".join(result) + "\n"
 
     if block_assembler and block_assembler.get("code_hash"):
-        ba_section = (
+        content = _remove_toml_section(content, "block_assembler")
+        content += (
             "\n[block_assembler]\n"
             f'code_hash = "{block_assembler["code_hash"]}"\n'
             f'args = "{block_assembler.get("args", "")}"\n'
             f'hash_type = "{block_assembler.get("hash_type", "type")}"\n'
             f'message = "{block_assembler.get("message", "0x")}"\n'
         )
-        if "[block_assembler]" not in content:
-            content += ba_section
-        else:
-            content = _re.sub(
-                r'\[block_assembler\][^\[]*',
-                ba_section.lstrip("\n"),
-                content,
-                count=1,
-            )
 
     if prometheus and prometheus.get("listen_address"):
-        prom_section = (
+        content = _remove_toml_section(content, "metrics.exporter.prometheus")
+        content += (
             "\n[metrics.exporter.prometheus]\n"
             f'listen_address = "{prometheus["listen_address"]}"\n'
         )
-        if "[metrics.exporter.prometheus]" not in content:
-            content += prom_section
 
     return content
+
+
+def _remove_toml_section(content: str, section_name: str) -> str:
+    """Remove a TOML section and all its content (including commented-out versions).
+
+    Removes everything from the line containing ``[section_name]`` (commented
+    or not) up to (but not including) the next ``[other_section]`` header.
+    Also removes stray bare keys (code_hash, args, etc.) that might have been
+    placed after a commented-out section header.
+    """
+    import re as _re
+    escaped = _re.escape(section_name)
+    pattern = (
+        r'(?m)'
+        r'^[# \t]*\[' + escaped + r'\][^\n]*\n'
+        r'(?:(?!\[)[^\n]*\n)*'
+    )
+    return _re.sub(pattern, '', content)
 
 
 def _patch_miner_toml(default_miner: str, rpc_port: str, merged: dict) -> str:
