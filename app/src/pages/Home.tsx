@@ -187,7 +187,7 @@ export default function Home() {
                   color: '#2e7d32',
                 }}
               >
-                {latest3x1 ? latest3x1.ckb_version_short : '--'}
+                {latest3x1 ? latest3x1.ckb_version : '--'}
               </span>
             </div>
             <div className="text-xs mt-2" style={{ color: '#636e72' }}>
@@ -267,7 +267,7 @@ export default function Home() {
                           color: '#2e7d32',
                         }}
                       >
-                        {row.ckb_version_short}
+                        {row.ckb_version}
                       </span>
                     </div>
                     <div className="text-sm" style={{ color: '#2d3436' }}>
