@@ -53,17 +53,19 @@ export default function Home() {
     return data.filter((d) => d.n_nodes === nodes && d.n_inout === inout)
   }, [data, filter])
 
-  const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE)
+  const displayData = useMemo(() => {
+    return [...filteredData].reverse()
+  }, [filteredData])
+
+  const totalPages = Math.ceil(displayData.length / ITEMS_PER_PAGE)
 
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE
-    return filteredData.slice(start, start + ITEMS_PER_PAGE)
-  }, [filteredData, currentPage])
+    return displayData.slice(start, start + ITEMS_PER_PAGE)
+  }, [displayData, currentPage])
 
   const latest3x1 = useMemo(() => {
-    return data
-      .filter((d) => d.n_nodes === 3 && d.n_inout === 1)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
+    return data.filter((d) => d.n_nodes === 3 && d.n_inout === 1).at(-1)
   }, [data])
 
   const handleToggleExpand = useCallback((id: string) => {

@@ -1,7 +1,7 @@
 import asyncio
 import json
 import os
-import re
+from datetime import datetime
 from pathlib import Path
 
 try:
@@ -68,9 +68,8 @@ def markdown_table_to_embed(content):
     return embed
 
 
-def extract_date(ckb_version):
-    match = re.search(r"\d{4}-\d{2}-\d{2}", ckb_version or "")
-    return match.group(0) if match else ""
+def current_date():
+    return datetime.now().strftime("%Y-%m-%d")
 
 
 def extract_version_short(ckb_version):
@@ -82,7 +81,7 @@ def extract_version_short(ckb_version):
 def normalize_record(stat_report):
     record = {
         "id": "",
-        "date": extract_date(stat_report.get("ckb_version", "")),
+        "date": current_date(),
         "n_nodes": stat_report.get("n_nodes", 0),
         "n_inout": stat_report.get("n_inout", 0),
         "ckb_version": stat_report.get("ckb_version", ""),
@@ -158,10 +157,10 @@ def update_app_data():
         return
 
     existing_records = load_existing_records()
-    merged_records = []
-    seen = set()
+    merged_records = list(existing_records)
+    seen = {dedupe_key(record) for record in existing_records}
 
-    for record in new_records + existing_records:
+    for record in new_records:
         key = dedupe_key(record)
         if key in seen:
             continue
