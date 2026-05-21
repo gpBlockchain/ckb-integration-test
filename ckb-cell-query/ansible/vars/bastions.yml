@@ -1,4 +1,4 @@
-ckb_urls: [ "http://172.31.23.160:8020,http://172.31.28.209:8021,http://172.31.16.223:8022" ]
+ckb_urls: [ "http://172.31.23.160:8020,http://172.31.28.209:8021,http://52.76.106.120:8322" ]
 ckb_mining_interval_ms: 18000
 
 # {{ ckb_benchmark_workspace }}/ckb-bench bench \
