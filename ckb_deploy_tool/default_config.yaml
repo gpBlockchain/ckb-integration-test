@@ -1,0 +1,36 @@
+# ckb_deploy_tool 默认配置
+# 各子项目可以通过 load_config() 加载后覆盖
+
+# --- CKB 节点默认值 ---
+ckb:
+  workspace: /var/lib/ckb
+  data_dir: /var/lib/ckb/data
+  service: ckb
+  download_tmp_dir: /tmp
+  rpc_listen_address: "0.0.0.0:8114"
+  network_listen_addresses:
+    - "/ip4/0.0.0.0/tcp/8114"
+  rpc_modules:
+    - Net
+    - Pool
+    - Miner
+    - Chain
+    - Stats
+    - Subscription
+    - Experiment
+    - Debug
+    - Indexer
+  logger:
+    log_to_file: true
+    log_to_stdout: false
+  download_url: "http://github-test-logs.ckbapp.dev/ckb/bin/ckb-develop-x86_64-unknown-linux-gnu-portable.tar.gz"
+
+# --- CKB Benchmark 默认值 ---
+benchmark:
+  workspace: /var/lib/ckb-benchmark
+  download_url: "https://github.com/nervosnetwork/ckb-integration-test/releases/latest/download/ckb-bench-linux-x86_64.tar.gz"
+
+# --- RPC 重试参数 ---
+rpc:
+  ready_retries: 60
+  ready_delay_sec: 5

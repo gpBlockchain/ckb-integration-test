@@ -1,15 +1,9 @@
-bash script/run.sh setup
-bash script/run.sh run 98400f6a67af07025f5959af35ed653d649f745b8f54bf3f07bef9bd605ee946.1w.1024w.cell
-bash script/run.sh bench
-
+pip install paramiko pyyaml tomlkit -q 2>/dev/null || true
 pip install qiniu
+pip install discord
+bash script/run.sh setup
+bash script/run.sh run ${1:-1000w}
 python script/gen_report.py
 report=`cat demo.md`
 export GITHUB_TOKEN=${GITHUB_TOKEN}
 bash script/ok.sh add_comment nervosnetwork/acceptance-internal 1222 "$report"
-
-python wkr.py
-report=`cat wkr.md`
-export GITHUB_TOKEN=${GITHUB_TOKEN}
-bash script/ok.sh add_comment nervosnetwork/acceptance-internal 1222 "$report"
-bash script/run.sh clean_job

@@ -30,3 +30,5 @@ tags
 
 # vagrant file
 .vagrant
+__pycache__/
+*.pyc

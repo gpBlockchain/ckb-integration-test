@@ -1,3 +1,4 @@
+pip install paramiko pyyaml tomlkit -q 2>/dev/null || true
 pip install qiniu
 bash script/run.sh setup
 bash script/run.sh run 1000w
