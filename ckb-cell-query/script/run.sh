@@ -148,7 +148,7 @@ node_rpc_url() {
   local port
 
   host=$(ansible-inventory --inventory "$ANSIBLE_INVENTORY" --host "$node" | jq -er '.ansible_host')
-  port=$(awk -F: '/^[[:space:]]*ckb_rpc_listen_address:/ { gsub(/[[:space:]\"]/, "", $0); print $NF; exit }' "$ANSIBLE_DIRECTORY/vars/$node.yml")
+  port=$(awk -F: '/^[[:space:]]*ckb_rpc_listen_address:/ { gsub(/[[:space:]"]/, "", $0); print $NF; exit }' "$ANSIBLE_DIRECTORY/vars/$node.yml")
 
   if ! [[ "$port" =~ ^[0-9]+$ ]]; then
     echo "Unable to determine the RPC port for $node" >&2
@@ -167,6 +167,26 @@ ckb_tip_header() {
     "$rpc_url" | jq -er '.result | select(.number != null and .hash != null) | [.number, .hash] | @tsv'
 }
 
+wait_for_tip_header() {
+  local rpc_url=$1
+  local node_name=$2
+  local tip
+  local deadline=$(( $(date +%s) + SYNC_TIMEOUT_SECONDS ))
+
+  echo "Waiting for $node_name RPC to become available at $rpc_url" >&2
+  while (( $(date +%s) < deadline )); do
+    if tip=$(ckb_tip_header "$rpc_url" 2>/dev/null); then
+      printf '%s\n' "$tip"
+      return 0
+    fi
+    sleep "$SYNC_POLL_INTERVAL_SECONDS"
+  done
+
+  echo "Timed out waiting for $node_name RPC at $rpc_url" >&2
+  ckb_tip_header "$rpc_url" >/dev/null || true
+  return 1
+}
+
 tip_number_to_decimal() {
   printf '%d\n' "$1"
 }
@@ -180,8 +200,8 @@ wait_for_node1_warmup_blocks() {
   local target_number
   local deadline
 
-  if ! initial_tip=$(ckb_tip_header "$node1_rpc_url"); then
-    echo "Unable to read node1's initial tip from $node1_rpc_url" >&2
+  if ! initial_tip=$(wait_for_tip_header "$node1_rpc_url" node1); then
+    echo "Unable to read node1's initial tip" >&2
     return 1
   fi
   read -r initial_number _ <<< "$initial_tip"
@@ -213,7 +233,7 @@ wait_for_nodes_to_sync() {
   local node3_tip
   local deadline
 
-  if ! node1_tip=$(ckb_tip_header "$node1_rpc_url"); then
+  if ! node1_tip=$(wait_for_tip_header "$node1_rpc_url" node1); then
     echo "Unable to read node1's tip before synchronization" >&2
     return 1
   fi
