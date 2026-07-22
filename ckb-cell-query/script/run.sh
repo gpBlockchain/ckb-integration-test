@@ -12,7 +12,10 @@ ANSIBLE_DIRECTORY=$JOB_DIRECTORY/ansible
 ANSIBLE_INVENTORY=$JOB_DIRECTORY/ansible/inventory.yml
 SSH_PRIVATE_KEY_PATH=$JOB_DIRECTORY/ssh/id
 SSH_PUBLIC_KEY_PATH=$JOB_DIRECTORY/ssh/id.pub
-if [ -z "$CKB_REMOTE_URL" ]; then
+WARMUP_BLOCKS=${WARMUP_BLOCKS:-10}
+SYNC_TIMEOUT_SECONDS=${SYNC_TIMEOUT_SECONDS:-600}
+SYNC_POLL_INTERVAL_SECONDS=${SYNC_POLL_INTERVAL_SECONDS:-2}
+if [ -z "${CKB_REMOTE_URL:-}" ]; then
     CKB_REMOTE_URL="http://github-test-logs.ckbapp.dev/ckb/bin/ckb-develop-x86_64-unknown-linux-gnu-portable.tar.gz"
 fi
 
@@ -120,6 +123,160 @@ ansible_ckb_miner_start() {
     -t ckb_miner_start
 }
 
+ansible_ckb_miner_stop() {
+  ansible_config
+  cd $ANSIBLE_DIRECTORY
+  ansible-playbook playbook.yml \
+    -e "node=$1" \
+    -t ckb_miner_stop
+}
+
+validate_sync_settings() {
+  local value
+
+  for value in "$WARMUP_BLOCKS" "$SYNC_TIMEOUT_SECONDS" "$SYNC_POLL_INTERVAL_SECONDS"; do
+    if ! [[ "$value" =~ ^[1-9][0-9]*$ ]]; then
+      echo "WARMUP_BLOCKS, SYNC_TIMEOUT_SECONDS, and SYNC_POLL_INTERVAL_SECONDS must be positive integers" >&2
+      return 1
+    fi
+  done
+}
+
+node_rpc_url() {
+  local node=$1
+  local host
+  local port
+
+  host=$(ansible-inventory --inventory "$ANSIBLE_INVENTORY" --host "$node" | jq -er '.ansible_host')
+  port=$(awk -F: '/^[[:space:]]*ckb_rpc_listen_address:/ { gsub(/[[:space:]\"]/, "", $0); print $NF; exit }' "$ANSIBLE_DIRECTORY/vars/$node.yml")
+
+  if ! [[ "$port" =~ ^[0-9]+$ ]]; then
+    echo "Unable to determine the RPC port for $node" >&2
+    return 1
+  fi
+
+  printf 'http://%s:%s\n' "$host" "$port"
+}
+
+ckb_tip_header() {
+  local rpc_url=$1
+
+  curl --fail --silent --show-error --connect-timeout 5 --max-time 10 \
+    --header 'Content-Type: application/json' \
+    --data '{"id": 0, "jsonrpc": "2.0", "method": "get_tip_header", "params": []}' \
+    "$rpc_url" | jq -er '.result | select(.number != null and .hash != null) | [.number, .hash] | @tsv'
+}
+
+tip_number_to_decimal() {
+  printf '%d\n' "$1"
+}
+
+wait_for_node1_warmup_blocks() {
+  local node1_rpc_url=$1
+  local initial_tip
+  local current_tip
+  local initial_number
+  local current_number
+  local target_number
+  local deadline
+
+  if ! initial_tip=$(ckb_tip_header "$node1_rpc_url"); then
+    echo "Unable to read node1's initial tip from $node1_rpc_url" >&2
+    return 1
+  fi
+  read -r initial_number _ <<< "$initial_tip"
+  target_number=$(( $(tip_number_to_decimal "$initial_number") + WARMUP_BLOCKS ))
+  deadline=$(( $(date +%s) + SYNC_TIMEOUT_SECONDS ))
+
+  echo "Waiting for node1 to mine $WARMUP_BLOCKS warm-up blocks (target height: $target_number)"
+  while (( $(date +%s) < deadline )); do
+    if current_tip=$(ckb_tip_header "$node1_rpc_url"); then
+      read -r current_number _ <<< "$current_tip"
+      if (( $(tip_number_to_decimal "$current_number") >= target_number )); then
+        echo "node1 reached warm-up height $current_number"
+        return 0
+      fi
+    fi
+    sleep "$SYNC_POLL_INTERVAL_SECONDS"
+  done
+
+  echo "Timed out waiting for node1 to mine $WARMUP_BLOCKS warm-up blocks" >&2
+  return 1
+}
+
+wait_for_nodes_to_sync() {
+  local node1_rpc_url=$1
+  local node2_rpc_url=$2
+  local node3_rpc_url=$3
+  local node1_tip
+  local node2_tip
+  local node3_tip
+  local deadline
+
+  if ! node1_tip=$(ckb_tip_header "$node1_rpc_url"); then
+    echo "Unable to read node1's tip before synchronization" >&2
+    return 1
+  fi
+  deadline=$(( $(date +%s) + SYNC_TIMEOUT_SECONDS ))
+
+  echo "Waiting for node2 and node3 to sync to node1 tip: $node1_tip"
+  while (( $(date +%s) < deadline )); do
+    if node2_tip=$(ckb_tip_header "$node2_rpc_url") \
+      && node3_tip=$(ckb_tip_header "$node3_rpc_url") \
+      && [[ "$node2_tip" == "$node1_tip" ]] \
+      && [[ "$node3_tip" == "$node1_tip" ]]; then
+      echo "node2 and node3 are synchronized with node1"
+      return 0
+    fi
+    sleep "$SYNC_POLL_INTERVAL_SECONDS"
+  done
+
+  echo "Timed out waiting for node2 and node3 to synchronize with node1" >&2
+  return 1
+}
+
+warm_up_and_sync_nodes() {
+  local node1_rpc_url
+  local node2_rpc_url
+  local node3_rpc_url
+
+  validate_sync_settings
+  node1_rpc_url=$(node_rpc_url node1)
+  node2_rpc_url=$(node_rpc_url node2)
+  node3_rpc_url=$(node_rpc_url node3)
+
+  ansible_ckb_miner_start node1
+  if ! wait_for_node1_warmup_blocks "$node1_rpc_url"; then
+    ansible_ckb_miner_stop node1
+    return 1
+  fi
+  ansible_ckb_miner_stop node1
+
+  wait_for_nodes_to_sync "$node1_rpc_url" "$node2_rpc_url" "$node3_rpc_url"
+}
+
+wait_for_existing_node_sync() {
+  local node1_rpc_url
+  local node2_rpc_url
+  local node3_rpc_url
+
+  validate_sync_settings
+  node1_rpc_url=$(node_rpc_url node1)
+  node2_rpc_url=$(node_rpc_url node2)
+  node3_rpc_url=$(node_rpc_url node3)
+
+  wait_for_nodes_to_sync "$node1_rpc_url" "$node2_rpc_url" "$node3_rpc_url"
+}
+
+link_all_nodes() {
+  link_node_p2p node1 node2
+  link_node_p2p node1 node3
+  link_node_p2p node2 node1
+  link_node_p2p node2 node3
+  link_node_p2p node3 node1
+  link_node_p2p node3 node2
+}
+
 
 
 ansible_ckb_restart() {
@@ -173,13 +330,9 @@ main() {
       sleep 20
 #      wait node start
       echo "link nodes "
-      link_node_p2p node1 node2
-      link_node_p2p node1 node3
-      link_node_p2p node2 node1
-      link_node_p2p node2 node3
-      link_node_p2p node3 node1
-      link_node_p2p node3 node2
-      echo "start bench "
+      link_all_nodes
+      warm_up_and_sync_nodes
+      echo "nodes are synchronized; ready to start bench"
       ;;
     "setup")
       job_setup
@@ -190,13 +343,9 @@ main() {
       ansible_deploy_download_ckb node3 "http://172.31.45.113:8000/data.$2.tar.gz" &
       wait
       echo "deploy successful"
-      link_node_p2p node1 node2
-      link_node_p2p node1 node3
-      link_node_p2p node2 node1
-      link_node_p2p node2 node3
-      link_node_p2p node3 node1
-      link_node_p2p node3 node2
-      echo "link successful"
+      link_all_nodes
+      warm_up_and_sync_nodes
+      echo "link and synchronization successful"
       ;;
     "run_ckb")
       ansible_run_ckb node1
@@ -222,14 +371,11 @@ main() {
       echo "clean finished"
       ;;
     "add_node")
-      link_node_p2p node1 node2
-      link_node_p2p node1 node3
-      link_node_p2p node2 node1
-      link_node_p2p node2 node3
-      link_node_p2p node3 node1
-      link_node_p2p node3 node2
+      link_all_nodes
+      warm_up_and_sync_nodes
       ;;
     "bench")
+      wait_for_existing_node_sync
       ansible_wait_ckb_benchmark
       ;;
     "get_log")
