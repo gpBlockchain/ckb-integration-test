@@ -22,6 +22,10 @@ lazy_static! {
     static ref MAP: Mutex<HashMap<String, Arc<CkbRpcClient>>> = Mutex::new(HashMap::new());
 }
 
+fn has_enough_pending_transactions(pending_tx_size: u64, min_pending_tx_size: u64) -> bool {
+    pending_tx_size >= min_pending_tx_size
+}
+
 
 pub fn get_or_create_ckb_client(key: String) -> Arc<CkbRpcClient> {
     {
@@ -149,14 +153,24 @@ impl Node {
         //TODO : check last_cursor is none ?
     }
 
-    pub fn mine(&self, n_blocks: u64, min_tx_size: usize) {
+    pub fn mine(
+        &self,
+        n_blocks: u64,
+        min_tx_size: usize,
+        min_pending_tx_size: u64,
+    ) {
         for _ in 0..n_blocks {
-            let template = self.rpc_client().get_block_template(None, None, None).unwrap();
+            let rpc_client = self.rpc_client();
+            let pending_tx_size = rpc_client.tx_pool_info().unwrap().pending.value();
+            if !has_enough_pending_transactions(pending_tx_size, min_pending_tx_size) {
+                continue;
+            }
+            let template = rpc_client.get_block_template(None, None, None).unwrap();
             let block = packed::Block::from(template);
             if block.transactions().len() < min_tx_size && block.proposals().len() < min_tx_size {
                 continue;
             }
-            self.rpc_client().submit_block("".into(), block.into()).unwrap();
+            rpc_client.submit_block("".into(), block.into()).unwrap();
             self.wait_for_tx_pool();
         }
     }
@@ -165,8 +179,25 @@ impl Node {
         let tip_number = self.rpc_client().get_tip_block_number().unwrap();
         if tip_number.value() < target_height.value() {
             let n_blocks = target_height.value() - tip_number.value();
-            self.mine(n_blocks.into(), 0);
+            self.mine(n_blocks.into(), 0, 0);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::has_enough_pending_transactions;
+
+    #[test]
+    fn pending_threshold_is_inclusive() {
+        assert!(!has_enough_pending_transactions(1399, 1400));
+        assert!(has_enough_pending_transactions(1400, 1400));
+        assert!(has_enough_pending_transactions(1401, 1400));
+    }
+
+    #[test]
+    fn zero_pending_threshold_is_disabled() {
+        assert!(has_enough_pending_transactions(0, 0));
     }
 }
 

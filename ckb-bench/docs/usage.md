@@ -34,14 +34,16 @@ Assuming `CKB_BENCH_OWNER_PRIVKEY` corresponds to your configurated `block_assem
 ```shell
   ckb-bench miner \
     --rpc-urls http://127.0.0.1:8111 \
-    --mining-interval-ms 1000
-    --min-tx-size 0
+    --mining-interval-ms 1000 \
+    --min-tx-size 0 \
+    --min-pending-tx-size 0
 ```
 
 The command runs a thread that mines blocks every `1000` milliseconds.
 
 - `--mining-interval-ms 1000`: Delay 1000 milliseconds between mining continuous blocks
 - `--min-tx-size 0`: At least a `min-tx-size` of transactions or proposals are required to be present within a block
+- `--min-pending-tx-size 0`: Mine only when the transaction pool has at least this many pending transactions. `0` disables this threshold
 
 ### Prepare Enough Unspent Cells
 

@@ -147,6 +147,8 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let n_blocks = value_t_or_exit!(arguments, "n-blocks", u64);
             let mining_interval_ms = value_t_or_exit!(arguments, "mining-interval-ms", u64);
             let min_tx_size = value_t_or_exit!(arguments, "min-tx-size", usize);
+            let min_pending_tx_size =
+                value_t_or_exit!(arguments, "min-pending-tx-size", u64);
             let nodes: Nodes = rpc_urls
                 .iter()
                 .map(|url| Node::init(url.as_str(), url.as_str()))
@@ -161,7 +163,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 .unwrap();
             if max_tip_number.value() == 0 {
                 for node in nodes.nodes() {
-                    node.mine(1, min_tx_size);
+                    node.mine(1, min_tx_size, min_pending_tx_size);
                     break;
                 }
             }
@@ -184,11 +186,18 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
 
             // mine `n_blocks`
             let mut mined_n_blocks = 0;
+            let mut highest_fixed_tip_number =
+                nodes.get_fixed_header().inner.number.value();
             let mut last_print_instant = Instant::now();
             loop {
                 for node in nodes.nodes() {
-                    node.mine(1, min_tx_size);
-                    mined_n_blocks += 1;
+                    node.mine(1, min_tx_size, min_pending_tx_size);
+                    let fixed_tip_number =
+                        nodes.get_fixed_header().inner.number.value();
+                    mined_n_blocks += count_new_fixed_tip_blocks(
+                        &mut highest_fixed_tip_number,
+                        fixed_tip_number,
+                    );
                     if n_blocks != 0 && mined_n_blocks >= n_blocks {
                         return;
                     }
@@ -199,14 +208,14 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                             crate::info!(
                                 "mined {} blocks, fixed_tip_number: {}",
                                 mined_n_blocks,
-                                nodes.get_fixed_header().inner.number.value()
+                                fixed_tip_number
                             );
                         } else {
                             crate::info!(
                                 "mined {}/{} blocks, fixed_tip_number: {}",
                                 mined_n_blocks,
                                 n_blocks,
-                                nodes.get_fixed_header().inner.number.value()
+                                fixed_tip_number
                             );
                         }
                     }
@@ -571,6 +580,15 @@ fn parse_h256_argument(raw: &str) -> Result<H256, String> {
     H256::from_str(raw.strip_prefix("0x").unwrap_or(raw)).map_err(|err| err.to_string())
 }
 
+fn count_new_fixed_tip_blocks(highest_fixed_tip_number: &mut u64, fixed_tip_number: u64) -> u64 {
+    if fixed_tip_number <= *highest_fixed_tip_number {
+        return 0;
+    }
+    let new_blocks = fixed_tip_number - *highest_fixed_tip_number;
+    *highest_fixed_tip_number = fixed_tip_number;
+    new_blocks
+}
+
 fn network_type_from_argument(raw: &str) -> NetworkType {
     match raw {
         "mainnet" => NetworkType::Mainnet,
@@ -769,6 +787,15 @@ fn clap_app() -> App<'static, 'static> {
                     .default_value("0")
                     .required(true)
                     .validator(|s| s.parse::<usize>().map(|_| ()).map_err(|err| err.to_string())),
+            ).arg(
+                Arg::with_name("min-pending-tx-size")
+                    .long("min-pending-tx-size")
+                    .value_name("NUMBER")
+                    .takes_value(true)
+                    .help("Minimum pending transaction count required to mine a block")
+                    .default_value("0")
+                    .required(true)
+                    .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
             ),
         )
         .subcommand(
@@ -1187,6 +1214,61 @@ mod cli_tests {
         let arguments = matches.subcommand_matches("info").unwrap();
 
         assert!(secp_lock_config_from_arguments(arguments).is_none());
+    }
+
+    #[test]
+    fn miner_accepts_min_pending_tx_size() {
+        let matches = clap_app()
+            .get_matches_from_safe(vec![
+                "ckb-bench",
+                "miner",
+                "--rpc-urls",
+                "http://127.0.0.1:8114",
+                "--mining-interval-ms",
+                "100",
+                "--min-pending-tx-size",
+                "1400",
+            ])
+            .unwrap();
+        let arguments = matches.subcommand_matches("miner").unwrap();
+
+        assert_eq!(arguments.value_of("min-pending-tx-size"), Some("1400"));
+    }
+
+    #[test]
+    fn miner_min_pending_tx_size_defaults_to_zero() {
+        let matches = clap_app()
+            .get_matches_from_safe(vec![
+                "ckb-bench",
+                "miner",
+                "--rpc-urls",
+                "http://127.0.0.1:8114",
+                "--mining-interval-ms",
+                "100",
+            ])
+            .unwrap();
+        let arguments = matches.subcommand_matches("miner").unwrap();
+
+        assert_eq!(arguments.value_of("min-pending-tx-size"), Some("0"));
+    }
+
+    #[test]
+    fn mined_count_only_tracks_new_fixed_tip_blocks() {
+        let mut highest_fixed_tip_number = 100;
+
+        assert_eq!(
+            count_new_fixed_tip_blocks(&mut highest_fixed_tip_number, 100),
+            0
+        );
+        assert_eq!(
+            count_new_fixed_tip_blocks(&mut highest_fixed_tip_number, 99),
+            0
+        );
+        assert_eq!(
+            count_new_fixed_tip_blocks(&mut highest_fixed_tip_number, 103),
+            3
+        );
+        assert_eq!(highest_fixed_tip_number, 103);
     }
 
     #[test]
