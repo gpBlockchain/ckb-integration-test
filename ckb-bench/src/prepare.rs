@@ -82,8 +82,7 @@ pub fn dispatch(
         if change_capacity >= Capacity::bytes(67).unwrap().as_u64() {
             let change_output = CellOutput::new_builder()
                 .capacity(change_capacity.pack())
-                // .lock(owner.single_secp256k1_lock_script_via_data())
-                .lock(owner.single_secp256k1_lock_script_via_type())
+                .lock(owner.primary_lock_script())
                 .build();
             outputs.push(change_output);
         }
@@ -91,7 +90,7 @@ pub fn dispatch(
             let user = &users[index_user(i)];
             let cell_output = CellOutput::new_builder()
                 .capacity(capacity_per_cell.pack())
-                .lock(user.single_secp256k1_lock_script_via_type())
+                .lock(user.primary_lock_script())
                 .build();
             outputs.push(cell_output);
         }
@@ -244,26 +243,9 @@ pub fn collect(nodes: &[Node], owner: &User, users: &[User]) {
     crate::info!("collect with params --n-users {}", users.len());
     let mut users_map = HashMap::new();
     for user in users {
-        users_map.insert(
-            user.single_secp256k1_lock_script_via_type()
-                .calc_script_hash(),
-            user.clone(),
-        );
-        users_map.insert(
-            user.single_secp256k1_lock_script_via_data()
-                .calc_script_hash(),
-            user.clone(),
-        );
-        users_map.insert(
-            user.single_secp256k1_lock_script_via_data1()
-                .calc_script_hash(),
-            user.clone(),
-        );
-        users_map.insert(
-            user.single_secp256k1_lock_script_via_data2()
-                .calc_script_hash(),
-            user.clone(),
-        );
+        for lock_script in user.lock_scripts() {
+            users_map.insert(lock_script.calc_script_hash(), user.clone());
+        }
     }
 
     let n_users = users.len();
@@ -312,7 +294,7 @@ fn collect_inputs(
     let fee = inputs.len() as u64 * 1000;
     let output = CellOutput::new_builder()
         .capacity((inputs_capacity - fee).pack())
-        .lock(owner.single_secp256k1_lock_script_via_type())
+        .lock(owner.primary_lock_script())
         .build();
     let unsigned_tx = TransactionBuilder::default()
         .inputs(

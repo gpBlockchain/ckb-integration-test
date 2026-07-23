@@ -191,28 +191,9 @@ impl TransactionProducer {
     pub fn new(users: Vec<User>, cell_deps: Vec<CellDep>, n_inout: usize, add_tx_param: AddTxParam) -> Self {
         let mut users_map = HashMap::new();
         for user in users {
-            // To support environment `CKB_BENCH_ENABLE_DATA1_SCRIPT`, we have to index 3
-            // kinds of cells
-            users_map.insert(
-                user.single_secp256k1_lock_script_via_type()
-                    .calc_script_hash(),
-                user.clone(),
-            );
-            users_map.insert(
-                user.single_secp256k1_lock_script_via_data()
-                    .calc_script_hash(),
-                user.clone(),
-            );
-            users_map.insert(
-                user.single_secp256k1_lock_script_via_data1()
-                    .calc_script_hash(),
-                user.clone(),
-            );
-            users_map.insert(
-                user.single_secp256k1_lock_script_via_data2()
-                    .calc_script_hash(),
-                user.clone(),
-            );
+            for lock_script in user.lock_scripts() {
+                users_map.insert(lock_script.calc_script_hash(), user.clone());
+            }
         }
 
         Self {
@@ -324,41 +305,15 @@ impl TransactionProducer {
                         if ckb_bench_output_script_type != -1 {
                             tx_index = ckb_bench_output_script_type as u32
                         }
-                        match tx_index % 4 {
-                            0 => CellOutput::new_builder()
-                                .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
-                                .lock(user.single_secp256k1_lock_script_via_data())
-                                .type_(self.add_tx_param.get_script_obj())
-                                .build(),
-                            1 => CellOutput::new_builder()
-                                .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
-                                .lock(user.single_secp256k1_lock_script_via_type())
-                                .type_(self.add_tx_param.get_script_obj())
-                                .build(),
-                            2 => {
-                                CellOutput::new_builder()
-                                    .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
-                                    .lock(user.single_secp256k1_lock_script_via_data1())
-                                    .type_(self.add_tx_param.get_script_obj())
-                                    .build()
-                            }
-                            3 => {
-                                if enabled_data2_script {
-                                    CellOutput::new_builder()
-                                        .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
-                                        .lock(user.single_secp256k1_lock_script_via_data2())
-                                        .type_(self.add_tx_param.get_script_obj())
-                                        .build()
-                                } else {
-                                    CellOutput::new_builder()
-                                        .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
-                                        .lock(user.single_secp256k1_lock_script_via_data())
-                                        .type_(self.add_tx_param.get_script_obj())
-                                        .build()
-                                }
-                            }
-                            _ => unreachable!(),
-                        }
+                        CellOutput::new_builder()
+                            .capacity(
+                                (cell.output.capacity.value() - self.add_tx_param.get_fee()).pack(),
+                            )
+                            .lock(
+                                user.bench_output_lock_script(tx_index, enabled_data2_script),
+                            )
+                            .type_(self.add_tx_param.get_script_obj())
+                            .build()
                     })
                     .collect::<Vec<_>>();
                 let outputs_data = live_cells.values().map(|_| self.add_tx_param.get_output_data());

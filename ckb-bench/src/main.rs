@@ -20,7 +20,9 @@ use tokio::runtime::Runtime;
 use crate::bench::{AddTxParam, LiveCellProducer, TransactionConsumer, TransactionProducer};
 use crate::prepare::{collect, derive_privkeys, dispatch};
 use crate::watcher::{Watcher};
-use ckb_types::core::{BlockNumber};
+use ckb_hash::blake2b_256;
+use ckb_sdk::{Address, AddressPayload, NetworkType};
+use ckb_types::core::{BlockNumber, DepType, ScriptHashType};
 use clap::{value_t_or_exit, values_t_or_exit, App, Arg, ArgMatches, SubCommand, value_t};
 use crossbeam_channel::{bounded};
 use std::env;
@@ -30,11 +32,11 @@ use std::str::FromStr;
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
 use ckb_types::H256;
-use ckb_types::packed::{Byte32};
-use ckb_types::prelude::{Entity};
+use ckb_types::packed::{Byte32, CellDep, OutPoint};
+use ckb_types::prelude::{Builder, Entity, Pack};
 use url::Url;
 use crate::nodes::Nodes;
-use crate::user::User;
+use crate::user::{SecpLockConfig, User};
 use ckb_crypto::secp::{Privkey};
 use crate::node::Node;
 use crate::html::{generate_html_report, TotalReport, write_to_file};
@@ -57,6 +59,17 @@ fn main() {
 
 pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
     match clap_arg_match.subcommand() {
+        ("address", Some(arguments)) => {
+            let network = network_type_from_argument(
+                arguments.value_of("network").expect("network has a default"),
+            );
+            let owner_privkey = owner_privkey_from_env();
+            let lock_config = secp_lock_config_from_arguments(arguments);
+            println!(
+                "{}",
+                address_from_privkey(&owner_privkey, network, lock_config.as_ref())
+            );
+        }
         ("info", Some(arguments)) => {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
             let nodes = rpc_urls
@@ -73,6 +86,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 )
             });
             let genesis_block = nodes[0].clone().genesis_block.unwrap();
+            let lock_config = secp_lock_config_from_arguments(arguments);
             let users = {
                 let owner_byte32_privkey =
                     Byte32::from_slice(H256::from_str(&owner_raw_privkey).unwrap().as_bytes())
@@ -85,7 +99,13 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 let privkeys = derive_privkeys(owner_byte32_privkey, n_users);
                 privkeys
                     .into_iter()
-                    .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
+                    .map(|privkey| {
+                        User::new_with_lock_config(
+                            genesis_block.clone(),
+                            Some(privkey),
+                            lock_config.clone(),
+                        )
+                    })
                     .collect::<Vec<_>>()
             };
             crate::info!("info with params --n-users {}", users.len());
@@ -96,9 +116,13 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                                 "failed to parse CKB_BENCH_OWNER_PRIVKEY to Byte32, error: {}",
                                 err
                             )
-                    });
+            });
             let owner_key = Privkey::from_slice(owner_byte32_privkey.as_slice());
-            let owner = User::new(genesis_block.clone(), Some(owner_key));
+            let owner = User::new_with_lock_config(
+                genesis_block.clone(),
+                Some(owner_key),
+                lock_config,
+            );
             let live_cells = owner.get_spendable_single_secp256k1_cells(&nodes[0]);
             let owner_capacity: u64 = live_cells.iter().map(|cell| cell.output.capacity.value()).sum();
             crate::info!("owner address:{},balance:{} live cells:{}", owner.single_secp256k1_address(), owner_capacity, live_cells.len());
@@ -210,6 +234,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 )
             });
             let genesis_block = nodes[0].clone().genesis_block.unwrap();
+            let lock_config = secp_lock_config_from_arguments(arguments);
             let owner = {
                 let owner_privkey = Privkey::from_str(&owner_raw_privkey).unwrap_or_else(|err| {
                     prompt_and_exit!(
@@ -217,7 +242,11 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                         err
                     )
                 });
-                User::new(genesis_block.clone(), Some(owner_privkey))
+                User::new_with_lock_config(
+                    genesis_block.clone(),
+                    Some(owner_privkey),
+                    lock_config.clone(),
+                )
             };
             let users = {
                 let owner_byte32_privkey =
@@ -231,7 +260,13 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 let privkeys = derive_privkeys(owner_byte32_privkey, n_users);
                 privkeys
                     .into_iter()
-                    .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
+                    .map(|privkey| {
+                        User::new_with_lock_config(
+                            genesis_block.clone(),
+                            Some(privkey),
+                            lock_config.clone(),
+                        )
+                    })
                     .collect::<Vec<_>>()
             };
             dispatch(&nodes, &owner, &users, cells_per_user, capacity_per_cell);
@@ -252,6 +287,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 )
             });
             let genesis_block = nodes[0].clone().genesis_block.unwrap();
+            let lock_config = secp_lock_config_from_arguments(arguments);
             let owner = {
                 let owner_privkey = Privkey::from_str(&owner_raw_privkey).unwrap_or_else(|err| {
                     prompt_and_exit!(
@@ -259,7 +295,11 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                         err
                     )
                 });
-                User::new(genesis_block.clone(), Some(owner_privkey))
+                User::new_with_lock_config(
+                    genesis_block.clone(),
+                    Some(owner_privkey),
+                    lock_config.clone(),
+                )
             };
             let users = {
                 let owner_byte32_privkey =
@@ -273,7 +313,13 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 let privkeys = derive_privkeys(owner_byte32_privkey, n_users);
                 privkeys
                     .into_iter()
-                    .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
+                    .map(|privkey| {
+                        User::new_with_lock_config(
+                            genesis_block.clone(),
+                            Some(privkey),
+                            lock_config.clone(),
+                        )
+                    })
                     .collect::<Vec<_>>()
             };
             collect(&nodes, &owner, &users);
@@ -303,6 +349,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 )
             });
             let genesis_block = nodes[0].clone().genesis_block.unwrap();
+            let lock_config = secp_lock_config_from_arguments(arguments);
             let users = {
                 let owner_byte32_privkey =
                     Byte32::from_slice(H256::from_str(&owner_raw_privkey).unwrap().as_bytes())
@@ -315,7 +362,13 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 let privkeys = derive_privkeys(owner_byte32_privkey, n_users);
                 privkeys
                     .into_iter()
-                    .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
+                    .map(|privkey| {
+                        User::new_with_lock_config(
+                            genesis_block.clone(),
+                            Some(privkey),
+                            lock_config.clone(),
+                        )
+                    })
                     .collect::<Vec<_>>()
             };
             let add_tx_params_path = match value_t!(arguments, "add-tx-params", String) {
@@ -514,10 +567,140 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
     }
 }
 
+fn parse_h256_argument(raw: &str) -> Result<H256, String> {
+    H256::from_str(raw.strip_prefix("0x").unwrap_or(raw)).map_err(|err| err.to_string())
+}
+
+fn network_type_from_argument(raw: &str) -> NetworkType {
+    match raw {
+        "mainnet" => NetworkType::Mainnet,
+        "testnet" => NetworkType::Testnet,
+        "dev" => NetworkType::Dev,
+        "staging" => NetworkType::Staging,
+        _ => unreachable!("validated network"),
+    }
+}
+
+fn owner_privkey_from_env() -> Privkey {
+    let raw_privkey = env::var("CKB_BENCH_OWNER_PRIVKEY").unwrap_or_else(|err| {
+        prompt_and_exit!(
+            "cannot find \"CKB_BENCH_OWNER_PRIVKEY\" from environment variables, error: {}",
+            err
+        )
+    });
+    Privkey::from_str(&raw_privkey).unwrap_or_else(|err| {
+        prompt_and_exit!(
+            "failed to parse CKB_BENCH_OWNER_PRIVKEY as a private key, error: {}",
+            err
+        )
+    })
+}
+
+fn address_from_privkey(
+    privkey: &Privkey,
+    network: NetworkType,
+    lock_config: Option<&SecpLockConfig>,
+) -> Address {
+    let pubkey = privkey.pubkey().expect("validated owner private key");
+    let args = ckb_types::H160::from_slice(&blake2b_256(pubkey.serialize())[0..20])
+        .expect("Blake160 is always 20 bytes");
+    let payload = match lock_config {
+        Some(config) => AddressPayload::from(config.lock_script(args)),
+        None => AddressPayload::from_pubkey_hash(args),
+    };
+    Address::new(network, payload, true)
+}
+
+fn secp_lock_config_from_arguments(arguments: &ArgMatches) -> Option<SecpLockConfig> {
+    let code_hash = arguments.value_of("lock-code-hash")?;
+    let code_hash = parse_h256_argument(code_hash).expect("validated lock code hash");
+    let hash_type = match arguments.value_of("lock-hash-type").unwrap_or("type") {
+        "type" => ScriptHashType::Type,
+        "data" => ScriptHashType::Data,
+        "data1" => ScriptHashType::Data1,
+        "data2" => ScriptHashType::Data2,
+        _ => unreachable!("validated lock hash type"),
+    };
+    let cell_dep = arguments.value_of("lock-dep-tx-hash").map(|tx_hash| {
+        let tx_hash =
+            parse_h256_argument(tx_hash).expect("validated lock dep transaction hash");
+        let index = arguments
+            .value_of("lock-dep-index")
+            .unwrap_or("0")
+            .parse::<u32>()
+            .expect("validated lock dep index");
+        let dep_type = match arguments.value_of("lock-dep-type").unwrap_or("code") {
+            "code" => DepType::Code,
+            "dep-group" => DepType::DepGroup,
+            _ => unreachable!("validated lock dep type"),
+        };
+        CellDep::new_builder()
+            .out_point(OutPoint::new(tx_hash.pack(), index))
+            .dep_type(dep_type.into())
+            .build()
+    });
+
+    Some(SecpLockConfig::new(code_hash, hash_type, cell_dep))
+}
+
+fn lock_script_args() -> Vec<Arg<'static, 'static>> {
+    vec![
+        Arg::with_name("lock-code-hash")
+            .long("lock-code-hash")
+            .takes_value(true)
+            .value_name("HASH")
+            .help("Override the secp-compatible lock Script code_hash")
+            .validator(|s| parse_h256_argument(&s).map(|_| ())),
+        Arg::with_name("lock-hash-type")
+            .long("lock-hash-type")
+            .takes_value(true)
+            .value_name("TYPE")
+            .possible_values(&["type", "data", "data1", "data2"])
+            .requires("lock-code-hash")
+            .help("hash_type for --lock-code-hash; defaults to type"),
+        Arg::with_name("lock-dep-tx-hash")
+            .long("lock-dep-tx-hash")
+            .takes_value(true)
+            .value_name("HASH")
+            .requires("lock-code-hash")
+            .help("Transaction hash containing the custom lock dependency")
+            .validator(|s| parse_h256_argument(&s).map(|_| ())),
+        Arg::with_name("lock-dep-index")
+            .long("lock-dep-index")
+            .takes_value(true)
+            .value_name("INDEX")
+            .requires("lock-dep-tx-hash")
+            .help("Output index of the custom lock dependency; defaults to 0")
+            .validator(|s| s.parse::<u32>().map(|_| ()).map_err(|err| err.to_string())),
+        Arg::with_name("lock-dep-type")
+            .long("lock-dep-type")
+            .takes_value(true)
+            .value_name("TYPE")
+            .possible_values(&["code", "dep-group"])
+            .requires("lock-dep-tx-hash")
+            .help("Dependency type for the custom lock; defaults to code"),
+    ]
+}
+
 fn clap_app() -> App<'static, 'static> {
     include_str!("../Cargo.toml");
     App::new("ckb-bench")
         .version(git_version::git_version!())
+        .subcommand(
+            SubCommand::with_name("address")
+                .visible_alias("get-address")
+                .about("print the funding address for CKB_BENCH_OWNER_PRIVKEY")
+                .arg(
+                    Arg::with_name("network")
+                        .long("network")
+                        .value_name("NETWORK")
+                        .takes_value(true)
+                        .possible_values(&["mainnet", "testnet", "dev", "staging"])
+                        .default_value("testnet")
+                        .help("Network prefix for the address"),
+                )
+                .args(&lock_script_args()),
+        )
         .subcommand(
             SubCommand::with_name("info")
                 .about("query balances of N users")
@@ -540,7 +723,8 @@ fn clap_app() -> App<'static, 'static> {
                         .help("Number of users")
                         .required(true)
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
-                ),
+                )
+                .args(&lock_script_args()),
         )
         .subcommand(
             SubCommand::with_name("miner")
@@ -678,6 +862,7 @@ fn clap_app() -> App<'static, 'static> {
                     .required(false)
                     .help("node prometheus url")
             )
+                .args(&lock_script_args())
             ,
         )
         .subcommand(
@@ -730,6 +915,7 @@ fn clap_app() -> App<'static, 'static> {
                         .default_value("./data")
                         .help("Data directory"),
                 )
+                .args(&lock_script_args())
         )
         .subcommand(
             SubCommand::with_name("collect")
@@ -762,7 +948,8 @@ fn clap_app() -> App<'static, 'static> {
                         .value_name("PATH")
                         .default_value("./data")
                         .help("Data directory"),
-                ),
+                )
+                .args(&lock_script_args()),
         ).subcommand(
         SubCommand::with_name("watch")
             .about("watch chain stat")
@@ -931,4 +1118,135 @@ fn get_add_tx_param_by_path(file_path: String) -> AddTxParam {
     file.read_to_string(&mut json_content).expect("Failed to read the file");
     let deserialized_object: AddTxParam = serde_json::from_str(&json_content).expect("Failed to deserialize JSON");
     deserialized_object
+}
+
+#[cfg(test)]
+mod cli_tests {
+    use super::*;
+
+    const CUSTOM_CODE_HASH: &str =
+        "0x1111111111111111111111111111111111111111111111111111111111111111";
+    const CUSTOM_DEP_TX_HASH: &str =
+        "0x2222222222222222222222222222222222222222222222222222222222222222";
+
+    #[test]
+    fn info_accepts_custom_lock_arguments() {
+        let matches = clap_app()
+            .get_matches_from_safe(vec![
+                "ckb-bench",
+                "info",
+                "--rpc-urls",
+                "http://127.0.0.1:8114",
+                "--n-users",
+                "1",
+                "--lock-code-hash",
+                CUSTOM_CODE_HASH,
+                "--lock-hash-type",
+                "data1",
+                "--lock-dep-tx-hash",
+                CUSTOM_DEP_TX_HASH,
+                "--lock-dep-index",
+                "3",
+                "--lock-dep-type",
+                "dep-group",
+            ])
+            .unwrap();
+        let arguments = matches.subcommand_matches("info").unwrap();
+
+        assert!(secp_lock_config_from_arguments(arguments).is_some());
+    }
+
+    #[test]
+    fn lock_hash_type_requires_code_hash() {
+        let result = clap_app().get_matches_from_safe(vec![
+            "ckb-bench",
+            "info",
+            "--rpc-urls",
+            "http://127.0.0.1:8114",
+            "--n-users",
+            "1",
+            "--lock-hash-type",
+            "data1",
+        ]);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn default_arguments_keep_standard_lock_configuration() {
+        let matches = clap_app()
+            .get_matches_from_safe(vec![
+                "ckb-bench",
+                "info",
+                "--rpc-urls",
+                "http://127.0.0.1:8114",
+                "--n-users",
+                "1",
+            ])
+            .unwrap();
+        let arguments = matches.subcommand_matches("info").unwrap();
+
+        assert!(secp_lock_config_from_arguments(arguments).is_none());
+    }
+
+    #[test]
+    fn address_command_defaults_to_testnet_and_supports_alias() {
+        for command in &["address", "get-address"] {
+            let matches = clap_app()
+                .get_matches_from_safe(vec!["ckb-bench", command])
+                .unwrap();
+            let arguments = matches.subcommand_matches("address").unwrap();
+
+            assert_eq!(arguments.value_of("network"), Some("testnet"));
+            assert_eq!(
+                network_type_from_argument(arguments.value_of("network").unwrap()),
+                NetworkType::Testnet
+            );
+        }
+    }
+
+    #[test]
+    fn generated_address_matches_owner_lock_script() {
+        let privkey = Privkey::from_str(
+            "af44a4755acccdd932561db5163d5c2ac025faa00877719c78bb0b5d61da8c94",
+        )
+        .unwrap();
+
+        let address = address_from_privkey(&privkey, NetworkType::Testnet, None);
+        let expected_args =
+            ckb_types::H160::from_slice(&blake2b_256(privkey.pubkey().unwrap().serialize())[..20])
+                .unwrap();
+        let expected_script = ckb_types::packed::Script::new_builder()
+            .hash_type(ScriptHashType::Type.into())
+            .code_hash(ckb_bench::SIGHASH_ALL_TYPE_HASH.pack())
+            .args(expected_args.0.pack())
+            .build();
+
+        assert!(address.to_string().starts_with("ckt1"));
+        assert_eq!(ckb_types::packed::Script::from(&address), expected_script);
+    }
+
+    #[test]
+    fn generated_address_uses_custom_lock_script() {
+        let privkey = Privkey::from_str(
+            "af44a4755acccdd932561db5163d5c2ac025faa00877719c78bb0b5d61da8c94",
+        )
+        .unwrap();
+        let config = SecpLockConfig::new(
+            parse_h256_argument(CUSTOM_CODE_HASH).unwrap(),
+            ScriptHashType::Data1,
+            None,
+        );
+
+        let address = address_from_privkey(&privkey, NetworkType::Mainnet, Some(&config));
+        let expected_args =
+            ckb_types::H160::from_slice(&blake2b_256(privkey.pubkey().unwrap().serialize())[..20])
+                .unwrap();
+
+        assert!(address.to_string().starts_with("ckb1"));
+        assert_eq!(
+            ckb_types::packed::Script::from(&address),
+            config.lock_script(expected_args)
+        );
+    }
 }
