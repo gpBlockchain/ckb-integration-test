@@ -388,6 +388,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     "".to_string()
                 }
             };
+            let add_tx_param = get_add_tx_param_by_path(add_tx_params_path);
             let is_smoking_test = arguments.is_present("is-smoking-test");
             let is_skip_report = arguments.is_present("is-skip-report");
             let bench_concurrent_requests_number = value_t_or_exit!(arguments, "concurrent-requests", usize);
@@ -399,7 +400,8 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 users.len(), n_inout, t_tx_interval.as_millis(), t_bench.as_millis(),bench_concurrent_requests_number
             );
 
-            let live_cell_producer = LiveCellProducer::new(users.clone(), nodes.clone());
+            let live_cell_producer =
+                LiveCellProducer::new(users.clone(), nodes.clone(), &add_tx_param);
             spawn(move || {
                 live_cell_producer.run(live_cell_sender, 3);
             });
@@ -409,9 +411,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 users.clone(),
                 vec![users[0].single_secp256k1_cell_dep()],
                 n_inout,
-                {
-                    get_add_tx_param_by_path(add_tx_params_path.into())
-                },
+                add_tx_param,
             );
 
             spawn(move || {

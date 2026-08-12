@@ -210,9 +210,8 @@ impl User {
 
         for lock_script in self.lock_scripts() {
             live_out_points.extend(
-                node.get_cells_by_script(lock_script)
-                    .expect("indexer get_live_cells_by_lock_script")
-                    .objects,
+                node.get_pure_capacity_cells_by_lock_script(lock_script)
+                    .expect("indexer get_live_cells_by_lock_script"),
             );
         }
 
