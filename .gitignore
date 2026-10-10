@@ -27,6 +27,7 @@ target/
 tags
 # project env
 .env
+ckb-cell-query/.venv/
 
 # vagrant file
 .vagrant
