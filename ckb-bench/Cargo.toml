@@ -5,17 +5,17 @@ authors = ["keroro <keroroxx520@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-ckb-types = "0.108.0"
-ckb-sdk = { git="https://github.com/nervosnetwork/ckb-sdk-rust.git",branch="master" }
-ckb-hash = "0.108.0"
-ckb-logger-config = "0.108.0"
-ckb-logger-service = "0.108.0"
+ckb-types = "0.115.0-rc2"
+ckb-sdk = "3.1.1"
+ckb-hash = "0.115.0-rc2"
+ckb-logger-config = "0.115.0-rc2"
+ckb-logger-service = "0.115.0-rc2"
 clap = { version = "2" }
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 url_serde = "0.2.0"
-ckb-jsonrpc-types = "=0.108.0"
+ckb-jsonrpc-types = "0.115.0-rc2"
 url = "1.7.2"
 toml = "0.5"
 lru = "0.6.0"
@@ -28,9 +28,9 @@ futures = "0.3"
 log = "0.4"
 lazy_static = "1.4.0"
 tempfile = "3.0"
-ckb-crypto = { version = "=0.108.0", features = ["secp"] }
+ckb-crypto = { version = "0.115.0-rc2", features = ["secp"] }
 reqwest = { version = "0.10.9", features = ["blocking", "json"] }
-ckb-error = "0.101.0"
+ckb-error = "0.115.0-rc2"
 jsonrpc-core = "14.0"
 rand = "0.8"
 regex = "1.5"

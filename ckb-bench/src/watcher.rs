@@ -15,7 +15,7 @@ pub struct Watcher {
     nodes: Nodes,
 }
 
-#[derive(Debug, Serialize, Deserialize,Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PoolReport {
     pending: Vec<u64>,
     orphan: Vec<u64>,
@@ -40,6 +40,7 @@ impl Watcher {
         &self,
         log_duration: u64,
         t_bench: Duration,
+        is_skip: bool,
     ) -> PoolReport {
         let start_time = Instant::now();
         let mut pool_report = PoolReport {
@@ -79,10 +80,11 @@ impl Watcher {
 
             sleep(Duration::from_secs(log_duration));
 
-            if pool_report.pending.len() > 0 && pool_report.pending[pool_report.pending.len() - 1] > 0 {
-                continue;
+            if !is_skip {
+                if pool_report.pending.len() > 0 && pool_report.pending[pool_report.pending.len() - 1] > 0 {
+                    continue;
+                }
             }
-
             if start_time.elapsed() > t_bench {
                 break;
             }
