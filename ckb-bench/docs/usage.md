@@ -6,6 +6,26 @@ CKB-bench measures the CKB network's transaction throughput by sending many tran
   - Construct and send transactions continuously 
   - Generate on-chain report
 
+### Get The Funding Address
+
+Set the owner private key and print its testnet/devnet funding address:
+
+```shell
+CKB_BENCH_OWNER_PRIVKEY=af44a4755acccdd932561db5163d5c2ac025faa00877719c78bb0b5d61da8c94 \
+ckb-bench address
+```
+
+The command prints only the address, so it can be copied directly into a
+wallet or faucet. Use `--network mainnet` for a mainnet `ckb...` address:
+
+```shell
+CKB_BENCH_OWNER_PRIVKEY=xxxx ckb-bench address --network mainnet
+```
+
+`get-address` is an alias of `address`. When using a custom lock, pass the same
+`--lock-code-hash` and `--lock-hash-type` values used by `dispatch`, `bench`,
+`collect`, and `info`.
+
 ### Run A Miner
 
 In order to access enough CKB capacity, we have to mine blocks.
@@ -14,14 +34,16 @@ Assuming `CKB_BENCH_OWNER_PRIVKEY` corresponds to your configurated `block_assem
 ```shell
   ckb-bench miner \
     --rpc-urls http://127.0.0.1:8111 \
-    --mining-interval-ms 1000
-    --min-tx-size 0
+    --mining-interval-ms 1000 \
+    --min-tx-size 0 \
+    --min-pending-tx-size 0
 ```
 
 The command runs a thread that mines blocks every `1000` milliseconds.
 
 - `--mining-interval-ms 1000`: Delay 1000 milliseconds between mining continuous blocks
 - `--min-tx-size 0`: At least a `min-tx-size` of transactions or proposals are required to be present within a block
+- `--min-pending-tx-size 0`: Mine only when the transaction pool has at least this many pending transactions. `0` disables this threshold
 
 ### Prepare Enough Unspent Cells
 
@@ -40,6 +62,43 @@ Assuming `CKB_BENCH_OWNER_PRIVKEY` has so much CKB capacity, the following code 
 - `--n-users 9000`: Generate `9000` derived users
 - `--cells-per-user 1`: Dispatch `1` unspent cell to every derived user.
 - `--capacity-per-cell 7100000000`: Gives each cell `7100000000` capacity.
+
+### Override The Lock Code Hash
+
+The `info`, `dispatch`, `bench`, and `collect` commands accept the same optional
+lock arguments. They override the lock `code_hash` while retaining ckb-bench's
+existing secp256k1 signing, 20-byte Blake160 args, and 65-byte recoverable
+signature witness format.
+
+```shell
+CKB_BENCH_OWNER_PRIVKEY=af44a4755acccdd932561db5163d5c2ac025faa00877719c78bb0b5d61da8c94 \
+ckb-bench dispatch \
+  --rpc-urls http://127.0.0.1:8111 \
+  --n-users 9000 \
+  --cells-per-user 1 \
+  --capacity-per-cell 7100000000 \
+  --lock-code-hash 0x1111111111111111111111111111111111111111111111111111111111111111 \
+  --lock-hash-type data1 \
+  --lock-dep-tx-hash 0x2222222222222222222222222222222222222222222222222222222222222222 \
+  --lock-dep-index 0 \
+  --lock-dep-type code
+```
+
+- `--lock-code-hash`: Enables custom lock mode and sets the 32-byte code hash.
+- `--lock-hash-type`: `type`, `data`, `data1`, or `data2`; defaults to `type`.
+- `--lock-dep-tx-hash`: Optional transaction hash containing the lock
+  dependency. When omitted, ckb-bench keeps using the genesis secp dep group.
+- `--lock-dep-index`: Dependency output index; defaults to `0`.
+- `--lock-dep-type`: `code` or `dep-group`; defaults to `code`.
+
+Use exactly the same lock arguments for every command in one benchmark
+workflow. If no custom lock arguments are provided, ckb-bench preserves its
+previous behavior, including querying the standard type/data/data1/data2 secp
+lock variants and rotating output hash types during `bench`.
+
+The custom code must be compatible with the existing secp256k1 lock args and
+witness format. Changing to a lock with different args, signing rules, or
+witness serialization requires a separate signer implementation.
 
 ### Construct and Send Transactions Continuously
 
@@ -174,3 +233,18 @@ example
 2023-05-30 09:13:15.955 +00:00 main INFO ckb_bench::watcher  [node] node_id:"http://18.162.180.86:8131/", tip_number:115443, pool msg: pending :0,orphan:100,proposed: 0 
 2023-05-30 09:13:16.090 +00:00 main INFO ckb_bench::watcher  [node] node_id:"http://18.162.235.225:8565/", tip_number:115443, pool msg: pending :0,orphan:0,proposed: 0 
 ```
+
+### Query Derived Users Balance
+
+You can query balances of `N` derived users using `info`. It derives users from `CKB_BENCH_OWNER_PRIVKEY` and aggregates spendable cells across type/data/data1 lock scripts.
+
+```shell
+CKB_BENCH_OWNER_PRIVKEY=xxxx \
+ckb-bench info \
+  --rpc-urls http://127.0.0.1:8111 \
+  --n-users 100
+```
+
+- `--rpc-urls`: CKB RPC URL(s). First URL is used to index balances.
+- `--n-users`: Number of derived users to query.
+- `CKB_BENCH_OWNER_PRIVKEY`: Parent private key used to derive user keys.
