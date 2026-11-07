@@ -5,7 +5,7 @@ ckb_download_tmp_dir: "/ckb-data"
 
 ckb_service: sync_ckb_node1
 ckb_data_dir: "{{ ckb_workspace }}/data"
-ckb_rpc_listen_address: "0.0.0.0:8010"
+ckb_rpc_listen_address: "0.0.0.0:8020"
 ckb_chain_spec_file: "benchmark-spec.toml"
 ckb_network_listen_addresses: ["/ip4/0.0.0.0/tcp/8050"]
 ckb_miner_poll_interval: 1000
