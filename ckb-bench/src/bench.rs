@@ -40,18 +40,28 @@ pub struct LiveCellProducer {
     users: Vec<User>,
     nodes: Vec<Node>,
     seen_out_points: LruCache<OutPoint, Instant>,
+    target_type: Option<ScriptJson>,
+    target_data: JsonBytes,
 }
 
 impl LiveCellProducer {
-    pub fn new(users: Vec<User>, nodes: Vec<Node>) -> Self {
+    pub fn new(users: Vec<User>, nodes: Vec<Node>, add_tx_param: &AddTxParam) -> Self {
         let n_users = users.len();
+        let target_type = add_tx_param.output_type_script();
+        let target_data = add_tx_param.output_data.clone();
 
         let mut user_unused_max_cell_count_cache = 1;
         // step_by: 20 : using a sampling method to find the user who owns the highest number of cells.
         // seen_out_points lruCache cache size = user_unused_max_cell_count_cache * n_users + 10
         // seen_out_points lruCache: preventing unused cells on the chain from being reused.
         for i in (0..=users.len() - 1).step_by(20) {
-            let user_unused_cell_count_cache = users.get(i).expect("out of bound").get_spendable_single_secp256k1_cells(&nodes[0]).len();
+            let user_unused_cell_count_cache = Self::get_user_benchmark_cells(
+                users.get(i).expect("out of bound"),
+                &nodes[0],
+                target_type.as_ref(),
+                &target_data,
+            )
+            .len();
             if user_unused_cell_count_cache > user_unused_max_cell_count_cache && user_unused_cell_count_cache <= 10000 {
                 user_unused_max_cell_count_cache = user_unused_cell_count_cache;
             }
@@ -64,7 +74,29 @@ impl LiveCellProducer {
             users,
             nodes,
             seen_out_points: LruCache::new(lrc_cache_size * 2),
+            target_type,
+            target_data,
         }
+    }
+
+    fn get_user_benchmark_cells(
+        user: &User,
+        node: &Node,
+        target_type: Option<&ScriptJson>,
+        target_data: &JsonBytes,
+    ) -> Vec<Cell> {
+        let mut cells = Vec::new();
+        for lock_script in user.lock_scripts() {
+            cells.extend(
+                node.get_benchmark_cells_by_lock_script(
+                    lock_script,
+                    target_type.cloned(),
+                    target_data.clone(),
+                )
+                .expect("indexer get benchmark cells by lock script"),
+            );
+        }
+        cells
     }
 
     pub fn run(mut self, live_cell_sender: Sender<Cell>, log_duration: u64) {
@@ -81,8 +113,12 @@ impl LiveCellProducer {
                 .min()
                 .unwrap();
             for user in self.users.iter() {
-                let live_cells = user
-                    .get_spendable_single_secp256k1_cells(&self.nodes[0])
+                let live_cells = Self::get_user_benchmark_cells(
+                    user,
+                    &self.nodes[0],
+                    self.target_type.as_ref(),
+                    &self.target_data,
+                )
                     .into_iter()
                     // TODO reduce competition
                     .filter(|cell| {
@@ -129,6 +165,14 @@ pub struct AddTxParam {
 }
 
 impl AddTxParam {
+    pub fn output_type_script(&self) -> Option<ScriptJson> {
+        if self._type.code_hash == H256::default() {
+            None
+        } else {
+            Some(self._type.clone())
+        }
+    }
+
     pub(crate) fn get_output_data(&mut self) -> ckb_types::packed::Bytes {
         ckb_types::packed::Bytes::from(self.output_data.clone())
     }
@@ -191,23 +235,9 @@ impl TransactionProducer {
     pub fn new(users: Vec<User>, cell_deps: Vec<CellDep>, n_inout: usize, add_tx_param: AddTxParam) -> Self {
         let mut users_map = HashMap::new();
         for user in users {
-            // To support environment `CKB_BENCH_ENABLE_DATA1_SCRIPT`, we have to index 3
-            // kinds of cells
-            users_map.insert(
-                user.single_secp256k1_lock_script_via_type()
-                    .calc_script_hash(),
-                user.clone(),
-            );
-            users_map.insert(
-                user.single_secp256k1_lock_script_via_data()
-                    .calc_script_hash(),
-                user.clone(),
-            );
-            users_map.insert(
-                user.single_secp256k1_lock_script_via_data1()
-                    .calc_script_hash(),
-                user.clone(),
-            );
+            for lock_script in user.lock_scripts() {
+                users_map.insert(lock_script.calc_script_hash(), user.clone());
+            }
         }
 
         Self {
@@ -228,7 +258,7 @@ impl TransactionProducer {
     ) {
         // Environment variables `CKB_BENCH_ENABLE_DATA1_SCRIPT` and
         // `CKB_BENCH_ENABLE_INVALID_SINCE_EPOCH` are temporary.
-        let enabled_data1_script = match ::std::env::var("CKB_BENCH_ENABLE_DATA1_SCRIPT") {
+        let enabled_data2_script = match ::std::env::var("CKB_BENCH_ENABLE_DATA2_SCRIPT") {
             Ok(raw) => {
                 raw.parse()
                     .map_err(|err| crate::error!("failed to parse environment variable \"CKB_BENCH_ENABLE_DATA1_SCRIPT={}\", error: {}", raw, err))
@@ -236,6 +266,15 @@ impl TransactionProducer {
             }
             Err(_) => false,
         };
+        let ckb_bench_output_script_type = match ::std::env::var("CKB_BENCH_OUTPUT_SCRIPT") {
+            Ok(raw) => {
+                raw.parse()
+                    .map_err(|err| crate::error!("failed to parse environment variable \"CKB_BENCH_ENABLE_DATA1_SCRIPT={}\", error: {}", raw, err))
+                    .unwrap_or(-1)
+            }
+            Err(_) => -1,
+        };
+
         let enabled_invalid_since_epoch = match ::std::env::var("CKB_BENCH_ENABLE_INVALID_SINCE_EPOCH") {
             Ok(raw) => {
                 raw.parse()
@@ -244,7 +283,7 @@ impl TransactionProducer {
             }
             Err(_) => false,
         };
-        crate::info!("CKB_BENCH_ENABLE_DATA1_SCRIPT = {}", enabled_data1_script);
+        crate::info!("CKB_BENCH_ENABLE_DATA1_SCRIPT = {}", enabled_data2_script);
         crate::info!(
             "CKB_BENCH_ENABLE_INVALID_SINCE_EPOCH = {}",
             enabled_invalid_since_epoch
@@ -305,36 +344,20 @@ impl TransactionProducer {
                         // use tx_index as random number
 
                         let lock_hash = ckb_types::packed::Script::from(cell.output.lock.clone()).calc_script_hash();
-                        let tx_index = cell.tx_index.value();
+                        let mut tx_index = cell.tx_index.value();
                         let user = self.users.get(&lock_hash).expect("should be ok");
-                        match tx_index % 3 {
-                            0 => CellOutput::new_builder()
-                                .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
-                                .lock(user.single_secp256k1_lock_script_via_data())
-                                .type_(self.add_tx_param.get_script_obj())
-                                .build(),
-                            1 => CellOutput::new_builder()
-                                .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
-                                .lock(user.single_secp256k1_lock_script_via_type())
-                                .type_(self.add_tx_param.get_script_obj())
-                                .build(),
-                            2 => {
-                                if enabled_data1_script {
-                                    CellOutput::new_builder()
-                                        .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
-                                        .lock(user.single_secp256k1_lock_script_via_data1())
-                                        .type_(self.add_tx_param.get_script_obj())
-                                        .build()
-                                } else {
-                                    CellOutput::new_builder()
-                                        .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
-                                        .lock(user.single_secp256k1_lock_script_via_data())
-                                        .type_(self.add_tx_param.get_script_obj())
-                                        .build()
-                                }
-                            }
-                            _ => unreachable!(),
+                        if ckb_bench_output_script_type != -1 {
+                            tx_index = ckb_bench_output_script_type as u32
                         }
+                        CellOutput::new_builder()
+                            .capacity(
+                                (cell.output.capacity.value() - self.add_tx_param.get_fee()).pack(),
+                            )
+                            .lock(
+                                user.bench_output_lock_script(tx_index, enabled_data2_script),
+                            )
+                            .type_(self.add_tx_param.get_script_obj())
+                            .build()
                     })
                     .collect::<Vec<_>>();
                 let outputs_data = live_cells.values().map(|_| self.add_tx_param.get_output_data());

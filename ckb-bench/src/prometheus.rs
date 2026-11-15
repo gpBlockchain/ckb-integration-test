@@ -83,8 +83,10 @@ impl MemoryUsageClient {
 
 
 #[test]
+#[ignore = "requires a live Prometheus endpoint"]
 fn test1() {
     let client = MemoryUsageClient::new("http://18.162.180.86:8100".into());
-    let ret = client.get_memory_usage(Duration::from_secs(3).as_secs(), Duration::from_secs(10));
+    let (_stop_sender, stop_receiver) = crossbeam_channel::bounded(1);
+    let ret = client.get_memory_usage(Duration::from_secs(3).as_secs(), stop_receiver);
     println!("{:?}", ret)
 }
